@@ -1,0 +1,21 @@
+name: pkg.pr.new
+# Every main commit publishes each package, so any main sha is installable:
+#   https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-pebble@<sha>
+# Never to npm. Needs the pkg.pr.new GitHub App on this repository (github.com/apps/pkg-pr-new).
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
+      - run: npx pkg-pr-new publish ./pebble

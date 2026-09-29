@@ -1,6 +1,24 @@
 {
-  "name": "iterate-integration-pebble",
-  "private": true,
+  "name": "iterate-pebble",
+  "version": "0.0.0",
+  "description": "Receive Pebble Index 01 recordings in an iterate project",
   "type": "module",
-  "main": "src/pebble.ts"
+  "exports": {
+    ".": {
+      "types": "./dist/pebble.d.ts",
+      "default": "./dist/pebble.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260925.1",
+    "iterate": "https://pkg.pr.new/iterate/iterate/iterate@main",
+    "typescript": "^7.0.2"
+  }
 }

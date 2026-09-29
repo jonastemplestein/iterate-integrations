@@ -26,8 +26,46 @@ Send them the returned `url` and wait until they say it is saved.
 
 ## 2. Add the receiver to the project's config repo
 
-Copy [`src/pebble.ts`](src/pebble.ts) into `/repos/config` as `pebble.ts`. In `worker.ts`, import it
-and add this branch inside `fetch`, after the fetch-routes block and before `if (!routingSlug)`:
+Two ways to get the code into `/repos/config`. Either way you also add one branch to `worker.ts`
+(below). Commit everything in one commit with
+`itx.repos.get("/repos/config").commitFiles({ message, changes: [{ path, content }, …] })`: a commit
+to `main` publishes.
+
+### Plan A: depend on the package (recommended)
+
+The code is the package `iterate-pebble`, built by this repo's CI and served by pkg.pr.new (it is
+never on npm). The loader only takes a pkg.pr.new package at a full commit, so pin one:
+
+```sh
+curl -sI https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-pebble@main | grep -i x-commit-key
+# x-commit-key: jonastemplestein:iterate-integrations:<40-hex sha>
+```
+
+Add the dependency to the config repo's `package.json` (keep what is there):
+
+```json
+"dependencies": {
+  "iterate-pebble": "https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-pebble@<40-hex sha>"
+}
+```
+
+and one new file, `pebble.ts`, that only re-exports it:
+
+```ts
+export { receivePebbleRecording } from "iterate-pebble";
+```
+
+To update later, pin a newer commit the same way.
+
+### Plan B: copy the source
+
+Read [`src/pebble.ts`](src/pebble.ts) (71 lines, no dependencies) and commit it to `/repos/config` as
+`pebble.ts`. Nothing else to add. You own the copy, so you can change it.
+
+### The branch in `worker.ts`
+
+In `worker.ts`, import it and add this inside `fetch`, after the fetch-routes block and before
+`if (!routingSlug)` (the project's worker already has `this.withItx`, from `ConfigWorker`):
 
 ```ts
 import { receivePebbleRecording } from "./pebble.ts";
@@ -35,9 +73,6 @@ import { receivePebbleRecording } from "./pebble.ts";
 if (request.headers.get("x-iterate-routing-slug") === "pebble")
   return receivePebbleRecording(request, (call) => this.withItx(call));
 ```
-
-Commit both files in one commit (`itx.repos.get("/repos/config").commitFiles({ message, changes:
-[{ path, content }, …] })`): a commit to `main` publishes.
 
 ## 3. Get the webhook URL
 

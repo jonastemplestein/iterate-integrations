@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "workspaces": [
+    "pebble"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  }
+}
