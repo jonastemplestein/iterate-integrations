@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "pebble",
-    "waitrose"
+    "waitrose",
+    "monzo"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
