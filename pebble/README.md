@@ -37,15 +37,15 @@ The code is the package `iterate-pebble`, built by this repo's CI and served by 
 never on npm). The loader only takes a pkg.pr.new package at a full commit, so pin one:
 
 ```sh
-curl -sI https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-pebble@main | grep -i x-commit-key
-# x-commit-key: jonastemplestein:iterate-integrations:<40-hex sha>
+curl -sI https://pkg.pr.new/jonastemplestein/iterategrations/iterate-pebble@main | grep -i x-commit-key
+# x-commit-key: jonastemplestein:iterategrations:<40-hex sha>
 ```
 
 Add the dependency to the config repo's `package.json` (keep what is there):
 
 ```json
 "dependencies": {
-  "iterate-pebble": "https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-pebble@<40-hex sha>"
+  "iterate-pebble": "https://pkg.pr.new/jonastemplestein/iterategrations/iterate-pebble@<40-hex sha>"
 }
 ```
 

@@ -84,15 +84,15 @@ The code is the package `iterate-waitrose`, built by this repo's CI and served b
 npm). The loader only takes a pkg.pr.new package at a full commit, so pin one:
 
 ```sh
-curl -sI https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-waitrose@main | grep -i x-commit-key
-# x-commit-key: jonastemplestein:iterate-integrations:<40-hex sha>
+curl -sI https://pkg.pr.new/jonastemplestein/iterategrations/iterate-waitrose@main | grep -i x-commit-key
+# x-commit-key: jonastemplestein:iterategrations:<40-hex sha>
 ```
 
 Add to the config repo's `package.json` (keep what is there):
 
 ```json
 "dependencies": {
-  "iterate-waitrose": "https://pkg.pr.new/jonastemplestein/iterate-integrations/iterate-waitrose@<40-hex sha>"
+  "iterate-waitrose": "https://pkg.pr.new/jonastemplestein/iterategrations/iterate-waitrose@<40-hex sha>"
 }
 ```
 
