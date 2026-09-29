@@ -1,0 +1,6 @@
+{
+  "name": "iterate-integration-pebble",
+  "private": true,
+  "type": "module",
+  "main": "src/pebble.ts"
+}
