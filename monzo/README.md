@@ -1,12 +1,15 @@
 # Monzo
 
-Every Monzo transaction lands in an iterate project as a `monzo/transaction-created` event on the
-`/monzo` stream, the transaction (amount, merchant, category, …) exactly as Monzo sends it.
+Every Monzo transaction lands in an iterate project as a `monzo/transaction-created` event, the
+transaction (amount, merchant, category, …) exactly as Monzo sends it, on a stream per account:
+`/monzo/<account name>`, with names the person picks (`joint-account`, `jonas-personal`). One
+sign-in covers all of a person's accounts, each has its own webhook, and every MCP tool
+(`get_balance`, `list_transactions`, …) works on any of them.
 
 Two halves, both through [zero-trust-mcp](https://github.com/iterate/zero-trust-mcp), the small
 Worker that keeps no credentials: **sign in to Monzo** (iterate holds only a token the Worker can
 read but not keep), and **register a webhook** with its `register_webhook` tool. Monzo doesn't sign
-its webhooks, so the recipe puts an unguessable secret in the webhook's URL and generates it for
+its webhooks, so the recipe puts an unguessable secret in each webhook's URL and generates it for
 the person: they never see or type it.
 
 You are a coding agent with iterate's MCP server (`run({ script })`, `async (itx) => …` at the
@@ -92,18 +95,13 @@ Check it's live. The receiver answers a path it doesn't know with `404`, and tha
 
 ```js
 async (itx) => {
-  const url = await itx.url({ routingSlug: "monzo", path: "/nope" });
+  const url = await itx.url({ routingSlug: "monzo", path: "/nope/nope" });
   const res = await itx.fetch(new Request(url, { method: "POST" }));
   return { url, status: res.status }; // 404 = the receiver is there and refused. Anything else: not published yet
 };
 ```
 
-## 3. Register the webhook, with a generated secret in its URL
-
-One script does it all: it makes the secret, stores it as `/secrets/monzo-webhook` (which the
-receiver checks with `itx.secrets.verifyEquals`), puts it in the URL, and registers that URL with
-Monzo. The secret is never returned, so it never reaches the chat. First find the account (ask
-the person which, if there are several; `uk_retail` is the current account):
+## 3. Name the accounts
 
 ```js
 async (itx) => {
@@ -112,60 +110,77 @@ async (itx) => {
   });
   const { accounts } = await mcp.callTool("list_accounts");
   await mcp.close();
-  return accounts.map((a) => ({ id: a.id, type: a.type, description: a.description }));
+  return accounts.map((a) => ({ id: a.id, type: a.type, description: a.description, owners: a.owners?.map((o) => o.preferred_name) }));
 };
 ```
 
-Then, with the account's id (running it again rotates the secret: it deletes this project's earlier
-webhook first, so the old URL stops):
+Show the person the list and have them pick a **name** for each account they want events from:
+lowercase letters, digits and hyphens (`joint-account`, `jonas-personal`). The name is the URL's
+first segment and the stream's last: `/monzo/<name>`. A joint account shows up beside the personal
+one (`uk_retail_joint`); a business account is `uk_business`.
+
+## 4. Register a webhook per account, with a generated secret in its URL
+
+One script per account does it all: it makes the secret, stores it as
+`/secrets/monzo-webhook-<name>` (which the receiver checks with `itx.secrets.verifyEquals`), puts
+it in the URL `…/<name>/<secret>`, and registers that URL with Monzo. The secret is never returned,
+so it never reaches the chat. Run it once per account, and again to rotate: it deletes this
+project's earlier webhook for that account first, so the old URL stops.
 
 ```js
 async (itx) => {
-  const accountId = "<the account id>";
+  const name = "<the account's name, e.g. joint-account>";
+  const accountId = "<its account id from step 3>";
   const secret = [...crypto.getRandomValues(new Uint8Array(32))]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-  const host = await itx.url({ routingSlug: "monzo" });
-  const url = await itx.url({ routingSlug: "monzo", path: `/${secret}` });
+  const mine = await itx.url({ routingSlug: "monzo", path: `/${name}/` });
+  const url = await itx.url({ routingSlug: "monzo", path: `/${name}/${secret}` });
   const mcp = await itx.connectToMcp("<base>/monzo/mcp", {
     headers: { authorization: 'Bearer getSecret("/secrets/monzo", { field: "accessToken" })' },
   });
   try {
     const { webhooks } = await mcp.callTool("list_webhooks", { account_id: accountId });
-    for (const old of webhooks.filter((hook) => hook.url.startsWith(host)))
+    for (const old of webhooks.filter((hook) => hook.url.startsWith(mine)))
       await mcp.callTool("delete_webhook", { webhook_id: old.id });
-    await itx.secrets.set("/secrets/monzo-webhook", secret, { urls: ["https://monzo.invalid"] });
+    await itx.secrets.set(`/secrets/monzo-webhook-${name}`, secret, { urls: ["https://monzo.invalid"] });
     const registered = await mcp.callTool("register_webhook", { account_id: accountId, url });
-    return { webhook: JSON.parse(JSON.stringify(registered).replaceAll(secret, "<secret>")) };
+    return { name, webhook: JSON.parse(JSON.stringify(registered).replaceAll(secret, "<secret>")) };
   } finally {
     await mcp.close();
   }
 };
 ```
 
-That URL is now a password: anyone who has it can post fake transactions to the project. It is
-held by the project's secret store and by Monzo, and it is in the request log of this one script.
-Keep it out of chat, and rotate by running the script again.
+Each URL is now a password: anyone who has it can post fake transactions to that account's stream.
+It is held by the project's secret store and by Monzo, and it is in the request log of this one
+script. Keep it out of chat. One account's URL cannot write to another's stream: each name has its
+own secret.
 
-## 4. Prove it
+## 5. Prove it
 
-Ask the person to make a small transaction (a card payment, or have someone send them £1), then:
+Ask the person to make a small transaction on one account (a card payment, or have someone send
+them £1), then:
 
 ```js
 async (itx) => {
-  const { payload } = await itx.cd("/monzo").waitForEvent({
+  const name = "<the account's name>";
+  const { payload } = await itx.cd(`/monzo/${name}`).waitForEvent({
     type: "monzo/transaction-created",
     timeoutMs: 110_000,
   });
   const t = payload.transaction;
-  return { id: t.id, amount: t.amount, currency: t.currency, description: t.description, merchant: t.merchant?.name };
+  return { name, id: t.id, amount: t.amount, currency: t.currency, description: t.description, merchant: t.merchant?.name };
 };
 ```
 
 If it gives up, end your turn and wait for the person to say they've paid. Monzo shows the
-transaction in the app a moment before the webhook fires.
+transaction in the app a moment before the webhook fires. Then write the accounts, their names and
+how to reach the API into the project's `AGENTS.md`.
 
 ## The event
+
+On the stream `/monzo/<account name>`:
 
 ```json
 {
@@ -184,4 +199,4 @@ transaction in the app a moment before the webhook fires.
   webhook covers the one account it was registered for.
 - Monzo asks the person to reconfirm API access about every 90 days. That affects the MCP tools
   (run step 2 of zero-trust-mcp.md again), not a webhook that is already registered.
-- To stop it: call `delete_webhook` through the same connection, then `itx.secrets.delete("/secrets/monzo-webhook")`.
+- To stop an account: call `delete_webhook` through the same connection, then `itx.secrets.delete("/secrets/monzo-webhook-<name>")`.
