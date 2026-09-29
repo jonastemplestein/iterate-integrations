@@ -3,10 +3,11 @@
   "workspaces": [
     "pebble",
     "waitrose",
-    "monzo"
+    "monzo",
+    "whatsapp"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm test --workspaces --if-present"
   }
