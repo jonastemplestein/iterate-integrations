@@ -8,3 +8,4 @@ CI and served by [pkg.pr.new](https://pkg.pr.new) (never npm): a project's confi
 | Folder | Package | What it does |
 | --- | --- | --- |
 | [`pebble/`](pebble) | `iterate-pebble` | Receive Pebble Index 01 ring recordings (transcript event + audio file). |
+| [`waitrose/`](waitrose) | `iterate-waitrose` | The Waitrose grocery API as a Cap'n Web RPC target, and its login as a secret's exchange code. |

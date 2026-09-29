@@ -1,10 +1,12 @@
 {
   "private": true,
   "workspaces": [
-    "pebble"
+    "pebble",
+    "waitrose"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "typecheck": "npm run typecheck --workspaces"
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm test --workspaces --if-present"
   }
 }

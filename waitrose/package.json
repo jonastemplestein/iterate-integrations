@@ -1,0 +1,24 @@
+{
+  "name": "iterate-waitrose",
+  "version": "0.0.0",
+  "description": "The Waitrose API as a Cap'n Web RPC target, and its login as a secret's exchange code, for an iterate project",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "npm run build && node --test \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260925.1",
+    "typescript": "^7.0.2"
+  }
+}
