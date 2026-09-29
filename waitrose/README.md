@@ -136,7 +136,8 @@ async (itx) => {
 ```
 
 Real products back is the proof. The first call reads the account's shopping context, so it takes
-a moment. Every method of [`WaitroseApi`](src/client.ts) is there: `searchProducts`,
+a moment. The route answers `401` to anyone who is not a signed-in member of the project; if this
+call gets one, dial the URL from a client that is signed in (any Cap'n Web client works). Every method of [`WaitroseApi`](src/client.ts) is there: `searchProducts`,
 `browseProducts`, `getProductsByLineNumbers`, `getTrolley`, `addToTrolley`, `removeFromTrolley`,
 `emptyTrolley`, `getOrders`, `getOrder`, `getSlotDays`, `bookSlot`, `getCheckout`, and more.
 
