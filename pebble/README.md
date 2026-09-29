@@ -4,25 +4,50 @@ Every recording you make with the ring lands in an iterate project: the transcri
 `pebble/recording-created` event on the `/pebble` stream, the audio as the file
 `/pebble/<recordingId>.m4a`.
 
+## 0. Before you start: the ring and the app
+
+Ask the person which of these is not done yet, and walk them through it:
+
+1. **Install the Pebble app** (the ring's own app, from Core Devices/Pebble): App Store for iPhone,
+   or Google Play for Android (package `coredevices.coreapp`).
+2. **Pair the Index 01 ring** with the phone by following the app's onboarding, and check a
+   recording works: hold the ring's button, talk, and see the recording and its transcript appear
+   in the app. If that doesn't work, the webhook can't work either.
+3. **Know the two gestures.** *Hold & talk* (single click, then hold) and *Double click & hold* are
+   the two ways to record, and each has its own webhook settings. Decide which one should reach
+   iterate; step 4 configures one or both.
+
+The webhook is in the app under **Index 01 Settings → Webhook** (Pebble's own reference:
+[INDEX_WEBHOOK_API.md](https://github.com/coredevices/mobileapp/blob/main/experimental/src/commonMain/kotlin/coredevices/ring/external/indexwebhook/INDEX_WEBHOOK_API.md);
+help article: <https://help.repebble.com/en/articles/15724406-index-advanced-features-mcp-webhook>).
+It sends every recording of that gesture to a URL of the person's choice, so nothing in this recipe
+needs a Pebble account, key or approval. Nothing is configured there until step 4.
+
 You are a coding agent with iterate's MCP server (`run({ script })`, `async (itx) => …` at the
 project's root; read <https://os.iterate.com/connect-a-service.md> first if that is new to you, and
 never take a secret in chat). Follow the steps in order.
 
-## 1. The signing secret
+## 1. The signing secret (the person makes it up)
 
-Tell the person to run `openssl rand -hex 32` and keep the output: they paste it here and into the
-Pebble app in step 4.
+Nobody hands out this secret: the person invents it, and it only has to be the same in two places,
+iterate and the Pebble app's **Sign requests** field. The Pebble app uses it to sign each
+recording, and the project uses it to check the signature. A random one is best; tell them:
+
+> Open a terminal and run `openssl rand -hex 32`. That output is your signing secret. Keep it
+> handy: you'll paste it into a web page I'm about to send you, and again into the Pebble app in
+> step 4. (No terminal? Any 32+ random characters from a password manager work.)
 
 ```js
 async (itx) =>
   itx.secrets.collectFromUser({
     path: "/secrets/pebble-webhook",
     egress: { urls: ["https://pebble.invalid"] }, // only ever compared, never sent anywhere
-    description: "The signing secret for your Pebble Index webhook (also typed into the Pebble app).",
+    description: "The signing secret for your Pebble Index webhook: the same value you'll type into the Pebble app's **Sign requests** field.",
   });
 ```
 
-Send them the returned `url` and wait until they say it is saved.
+Send them the returned `url`, tell them to paste the secret there, and wait until they say it is
+saved. Check that `(await itx.secrets.list()).map((s) => s.path)` includes `/secrets/pebble-webhook`.
 
 ## 2. Add the receiver to the project's config repo
 
@@ -84,12 +109,25 @@ async (itx) => {
 };
 ```
 
-## 4. Set up the Pebble app
+## 4. Point the Pebble app at the project
 
-The app has no link to these settings. Tell the person: **Index** tab → **Settings** → **Webhook**,
-then per gesture (**Hold & talk**, **Double click & hold**): paste the URL, turn on **Sign
-requests** and paste the secret, set **Send** to **Both**, tap **Send test event**, **Save**. Don't
-add an `Authorization` header: a project's host answers bearers itself.
+Give the person the webhook URL from step 3 and these taps, in the Pebble app:
+
+1. **Index 01 Settings → Webhook.**
+2. Pick the gesture to configure (**Hold & talk** or **Double click & hold**). Each has its own
+   URL, headers and payload.
+3. **Webhook URL:** paste the URL from step 3.
+4. Turn on **Sign requests** and paste the signing secret from step 1 (the same value, exactly).
+5. **Send:** choose **Both**, so you get the transcript and the audio ("Recording only" has no
+   transcript; "Transcription only" has no audio file).
+6. Tap **Send test event.** Under **Recent runs** it should show as delivered. The project answers
+   a verified test event with `200` and stores nothing.
+7. **Save.** A gesture only sends once it is saved with a URL. Repeat for the other gesture if they
+   want both.
+
+Don't add an `Authorization` header: a project's host answers bearer tokens itself, before the
+project's code runs. If the test event fails: the secret differs between the two places (set it
+again in both), or the phone's clock is more than five minutes off.
 
 ## 5. Prove it
 
