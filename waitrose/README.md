@@ -16,7 +16,8 @@ async (itx) =>
   itx.secrets.collectFromUser({
     path: "/secrets/waitrose",
     egress: { urls: ["https://www.waitrose.com"] },
-    description: "Your Waitrose account: the email and password you sign in to waitrose.com with. They are only ever sent to waitrose.com.",
+    description:
+      "Your Waitrose account: the email and password you sign in to waitrose.com with. They are only ever sent to waitrose.com.",
     fields: [
       { name: "username", label: "Email" },
       { name: "password", label: "Password" },
@@ -30,11 +31,15 @@ login, which is the module below (`EXCHANGE_SOURCE` in the package; it runs in a
 
 ```js
 async (itx) =>
-  itx.secrets.set("/secrets/waitrose", {}, {
-    urls: ["https://www.waitrose.com"],
-    merge: true, // keeps the username and password the person saved
-    refresh: { kind: "worker", source: `<the module below, as a string>` },
-  });
+  itx.secrets.set(
+    "/secrets/waitrose",
+    {},
+    {
+      urls: ["https://www.waitrose.com"],
+      merge: true, // keeps the username and password the person saved
+      refresh: { kind: "worker", source: `<the module below, as a string>` },
+    },
+  );
 ```
 
 <!-- prettier-ignore -->
@@ -121,7 +126,10 @@ import { Waitrose } from "./waitrose.ts";
 if (request.headers.get("x-iterate-routing-slug") === "waitrose") {
   const denied = this.auth.require(request);
   if (denied) return denied;
-  return newWorkersRpcResponse(request, new Waitrose({ fetch: (r) => this.withItx((itx) => itx.fetch(r)) }));
+  return newWorkersRpcResponse(
+    request,
+    new Waitrose({ fetch: (r) => this.withItx((itx) => itx.fetch(r)) }),
+  );
 }
 ```
 

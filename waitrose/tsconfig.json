@@ -1,22 +1,16 @@
 {
   "compilerOptions": {
     "target": "es2024",
-    "lib": [
-      "esnext"
-    ],
+    "lib": ["esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
-    "types": [
-      "@cloudflare/workers-types"
-    ],
+    "types": ["@cloudflare/workers-types"],
     "declaration": true,
     "rootDir": "src",
     "outDir": "dist",
     "isolatedDeclarations": true
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

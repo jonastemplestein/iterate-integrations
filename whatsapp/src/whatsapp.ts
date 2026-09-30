@@ -56,8 +56,13 @@ const PENDING_LIMIT = 1_000;
  *  IDEMPOTENCY_CONFLICT): by its code where the error kept it, else by the platform's one message
  *  for it (iterate/stream/processor `idempotencyConflictMessage`). */
 const isIdempotencyConflict = (error: unknown): boolean =>
-  (typeof error === "object" && error !== null && "code" in error && error.code === "IDEMPOTENCY_CONFLICT") ||
-  /already names a different event at offset/.test(error instanceof Error ? error.message : String(error));
+  (typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "IDEMPOTENCY_CONFLICT") ||
+  /already names a different event at offset/.test(
+    error instanceof Error ? error.message : String(error),
+  );
 
 /** THE LEND. `connect` opens the WhatsApp socket once for the whole process, and a new one each time
  *  Baileys closes one, handing each to `onSocket`. The answer is `iterate provide`'s default export:
@@ -228,7 +233,9 @@ async function connectBaileys(onSocket: (socket: WASocket) => void): Promise<voi
       const code = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)
         ?.output?.statusCode;
       if (code === DisconnectReason.loggedOut) {
-        console.error(`WhatsApp logged this computer out: delete ${AUTH_FOLDER} and run again to link it anew.`);
+        console.error(
+          `WhatsApp logged this computer out: delete ${AUTH_FOLDER} and run again to link it anew.`,
+        );
         process.exit(1);
       }
       if (code === DisconnectReason.connectionReplaced) {

@@ -9,7 +9,12 @@
 // you. Sent and received messages land on `/integrations/whatsapp-dummy` exactly as whatsapp.ts's
 // land on `/integrations/whatsapp`; `sentMessages()` answers what the pretend WhatsApp was sent.
 import { EventEmitter } from "node:events";
-import type { AnyMessageContent, BaileysEventMap, MiscMessageGenerationOptions, WAMessage } from "baileys";
+import type {
+  AnyMessageContent,
+  BaileysEventMap,
+  MiscMessageGenerationOptions,
+  WAMessage,
+} from "baileys";
 import { provideWhatsApp, type WhatsAppSocket } from "./whatsapp.ts";
 
 export const description =
@@ -45,18 +50,43 @@ function makeDummySocket() {
   return {
     ev: ev as unknown as WhatsAppSocket["ev"],
     user: { id: ME, name: "Dummy" },
-    async sendMessage(jid: string, content: AnyMessageContent, options?: MiscMessageGenerationOptions) {
+    async sendMessage(
+      jid: string,
+      content: AnyMessageContent,
+      options?: MiscMessageGenerationOptions,
+    ) {
       const id = options?.messageId || `DUMMY${Date.now()}${nextId++}`;
       const c = content as Record<string, any>;
       const message =
         "text" in c
           ? { conversation: c.text as string }
           : "image" in c
-            ? { imageMessage: mediaMessage(id, await bytesOf(c.image), c.mimetype || "image/jpeg", c.caption) }
+            ? {
+                imageMessage: mediaMessage(
+                  id,
+                  await bytesOf(c.image),
+                  c.mimetype || "image/jpeg",
+                  c.caption,
+                ),
+              }
             : "document" in c
-              ? { documentMessage: { ...mediaMessage(id, await bytesOf(c.document), c.mimetype), fileName: c.fileName } }
+              ? {
+                  documentMessage: {
+                    ...mediaMessage(id, await bytesOf(c.document), c.mimetype),
+                    fileName: c.fileName,
+                  },
+                }
               : "audio" in c
-                ? { audioMessage: { ...mediaMessage(id, await bytesOf(c.audio), c.mimetype || "audio/ogg; codecs=opus"), ptt: !!c.ptt } }
+                ? {
+                    audioMessage: {
+                      ...mediaMessage(
+                        id,
+                        await bytesOf(c.audio),
+                        c.mimetype || "audio/ogg; codecs=opus",
+                      ),
+                      ptt: !!c.ptt,
+                    },
+                  }
                 : "react" in c
                   ? { reactionMessage: { key: c.react.key, text: c.react.text } }
                   : null;
@@ -72,10 +102,18 @@ function makeDummySocket() {
       return sentMessage;
     },
     async onWhatsApp(...phones: string[]) {
-      return phones.map((phone) => ({ jid: `${phone.replace(/\D/g, "")}@s.whatsapp.net`, exists: true }));
+      return phones.map((phone) => ({
+        jid: `${phone.replace(/\D/g, "")}@s.whatsapp.net`,
+        exists: true,
+      }));
     },
     async groupMetadata(jid: string) {
-      return { id: jid, subject: "Dummy group", owner: ME, participants: [{ id: ME, admin: "superadmin" }] };
+      return {
+        id: jid,
+        subject: "Dummy group",
+        owner: ME,
+        participants: [{ id: ME, admin: "superadmin" }],
+      };
     },
     async readMessages(_keys: unknown[]) {},
     async sendPresenceUpdate(_type: string, _jid?: string) {},
@@ -92,12 +130,20 @@ function makeDummySocket() {
       const received: WAMessage = {
         key: { remoteJid: input.from, fromMe: false, id },
         message: input.image
-          ? { imageMessage: mediaMessage(id, input.image.data, input.image.mimetype, input.image.caption) }
+          ? {
+              imageMessage: mediaMessage(
+                id,
+                input.image.data,
+                input.image.mimetype,
+                input.image.caption,
+              ),
+            }
           : { conversation: input.text ?? "" },
         messageTimestamp: Math.floor(Date.now() / 1000),
         pushName: input.pushName ?? "Dummy contact",
       };
-      if (input.afterMs) setTimeout(() => upsert({ type: "notify", messages: [received] }), input.afterMs);
+      if (input.afterMs)
+        setTimeout(() => upsert({ type: "notify", messages: [received] }), input.afterMs);
       else upsert({ type: "notify", messages: [received] });
       return received;
     },

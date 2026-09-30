@@ -23,41 +23,41 @@ const USER_AGENT = "Waitrose/3.9.1 (Android)";
 const QUERIES = {
   // Shopping Context
   GetShoppingContext: `query GetShoppingContext { shoppingContext { customerId customerOrderId customerOrderState defaultBranchId } }`,
-  
+
   // Account
   GetAccountInfoAndMembership: `query GetAccountInfoAndMembership { getAccountProfile { id email contactAddress { __typename ...ContactAddress } } getMemberships { memberships { number type } } }  fragment Addressee on Addressee { title firstName lastName contactNumber }  fragment ContactAddress on Address { id line1 line2 line3 town region country postalCode addressee { __typename ...Addressee } }`,
-  
+
   // Trolley
   GetTrolley: `query GetTrolley($orderId: ID!) { getTrolley(orderId: $orderId) { checkoutReadiness { __typename ...CheckoutReadiness } products { __typename ...TrolleyProduct } slotChangeable trolley { __typename ...TrolleyResponse } instantCheckout failures { __typename ...TrolleyFailure } } }  fragment CheckoutReadiness on CheckoutReadiness { slotTypeValid }  fragment TrolleyProductCategory on TrolleyProductCategory { id name }  fragment TrolleyPrice on Price { amount currencyCode }  fragment Quantity on Quantity { amount uom }  fragment QuantityPrice on QuantityPrice { price { __typename ...TrolleyPrice } quantity { __typename ...Quantity } }  fragment Hfss on Hfss { status }  fragment ProductImage on ProductImage { extraLarge large medium small }  fragment Group on Group { name }  fragment TrolleyProductPromotion on TrolleyProductPromotion { groups { __typename ...Group } myWaitrosePromotion promotionDescription promotionExpiryDate promotionId promotionTypeCode promotionUnitPrice { __typename ...TrolleyPrice } promotionalPricePerUnit discount { type } hidden }  fragment AvailableDate on AvailableDate { startDate endDate }  fragment Restriction on Restriction { availableDates { __typename ...AvailableDate } }  fragment ProductReview on ProductReview { averageRating reviewCount }  fragment ProductServings on ProductServings { max min }  fragment ProductWeight on ProductWeight { uoms }  fragment TrolleyProduct on TrolleyProduct { categories { __typename ...TrolleyProductCategory } currentSaleUnitPrice { __typename ...QuantityPrice } defaultQuantity { __typename ...Quantity } displayPrice displayPriceEstimated displayPriceQualifier formattedPriceRange formattedWeightRange hfss { __typename ...Hfss } id leadTime lineNumber maxPersonalisedMessageLength name brandName productImageUrls { __typename ...ProductImage } productType promotions { __typename ...TrolleyProductPromotion } restriction { __typename ...Restriction } reviews { __typename ...ProductReview } servings { __typename ...ProductServings } substitutionsProhibited size thumbnail weights { __typename ...ProductWeight } depositCharge { __typename ...TrolleyPrice } }  fragment SlotOptionDatesType on SlotOptionDatesType { date type }  fragment Conflict on Conflict { productId lineNumber messages priority outOfStock resolutionActions prohibitedActions itemId type slotOptionDates { __typename ...SlotOptionDatesType } }  fragment TrolleyItem on TrolleyItem { canSubstitute lineNumber noteToShopper personalisedMessage quantity { __typename ...Quantity } reservedQuantity totalPrice { __typename ...TrolleyPrice } triggeredPromotions trolleyItemId untriggeredPromotions }  fragment TrolleyItemCounts on TrolleyItemCounts { hardConflicts noConflicts softConflicts }  fragment TrolleyTotals on TrolleyTotals { collectionMinimumOrderValue { __typename ...TrolleyPrice } deliveryCharge { __typename ...TrolleyPrice } deliveryMinimumOrderValue { __typename ...TrolleyPrice } itemTotalEstimatedCost { __typename ...TrolleyPrice } minimumSpendThresholdMet savingsFromOffers { __typename ...TrolleyPrice } savingsFromMyWaitrose { __typename ...TrolleyPrice } totalDepositCharge { __typename ...TrolleyPrice } totalEstimatedCost { __typename ...TrolleyPrice } trolleyItemCounts { __typename ...TrolleyItemCounts } }  fragment TrolleyResponse on TrolleyResponse { amendingOrder conflicts { __typename ...Conflict } orderId trolleyItems { __typename ...TrolleyItem } trolleyTotals { __typename ...TrolleyTotals } }  fragment TrolleyFailure on TrolleyFailure { message type }`,
-  
+
   UpdateTrolleyItems: `mutation UpdateTrolleyItems($trolleyItemsInput: [TrolleyItemInput!], $orderId: ID!) { updateTrolleyItems(trolleyItems: $trolleyItemsInput, orderId: $orderId) { products { __typename ...TrolleyProduct } trolley { __typename ...TrolleyResponse } instantCheckout failures { __typename ...TrolleyFailure } } }  fragment TrolleyProductCategory on TrolleyProductCategory { id name }  fragment TrolleyPrice on Price { amount currencyCode }  fragment Quantity on Quantity { amount uom }  fragment QuantityPrice on QuantityPrice { price { __typename ...TrolleyPrice } quantity { __typename ...Quantity } }  fragment Hfss on Hfss { status }  fragment ProductImage on ProductImage { extraLarge large medium small }  fragment Group on Group { name }  fragment TrolleyProductPromotion on TrolleyProductPromotion { groups { __typename ...Group } myWaitrosePromotion promotionDescription promotionExpiryDate promotionId promotionTypeCode promotionUnitPrice { __typename ...TrolleyPrice } promotionalPricePerUnit discount { type } hidden }  fragment AvailableDate on AvailableDate { startDate endDate }  fragment Restriction on Restriction { availableDates { __typename ...AvailableDate } }  fragment ProductReview on ProductReview { averageRating reviewCount }  fragment ProductServings on ProductServings { max min }  fragment ProductWeight on ProductWeight { uoms }  fragment TrolleyProduct on TrolleyProduct { categories { __typename ...TrolleyProductCategory } currentSaleUnitPrice { __typename ...QuantityPrice } defaultQuantity { __typename ...Quantity } displayPrice displayPriceEstimated displayPriceQualifier formattedPriceRange formattedWeightRange hfss { __typename ...Hfss } id leadTime lineNumber maxPersonalisedMessageLength name brandName productImageUrls { __typename ...ProductImage } productType promotions { __typename ...TrolleyProductPromotion } restriction { __typename ...Restriction } reviews { __typename ...ProductReview } servings { __typename ...ProductServings } substitutionsProhibited size thumbnail weights { __typename ...ProductWeight } depositCharge { __typename ...TrolleyPrice } }  fragment SlotOptionDatesType on SlotOptionDatesType { date type }  fragment Conflict on Conflict { productId lineNumber messages priority outOfStock resolutionActions prohibitedActions itemId type slotOptionDates { __typename ...SlotOptionDatesType } }  fragment TrolleyItem on TrolleyItem { canSubstitute lineNumber noteToShopper personalisedMessage quantity { __typename ...Quantity } reservedQuantity totalPrice { __typename ...TrolleyPrice } triggeredPromotions trolleyItemId untriggeredPromotions }  fragment TrolleyItemCounts on TrolleyItemCounts { hardConflicts noConflicts softConflicts }  fragment TrolleyTotals on TrolleyTotals { collectionMinimumOrderValue { __typename ...TrolleyPrice } deliveryCharge { __typename ...TrolleyPrice } deliveryMinimumOrderValue { __typename ...TrolleyPrice } itemTotalEstimatedCost { __typename ...TrolleyPrice } minimumSpendThresholdMet savingsFromOffers { __typename ...TrolleyPrice } savingsFromMyWaitrose { __typename ...TrolleyPrice } totalDepositCharge { __typename ...TrolleyPrice } totalEstimatedCost { __typename ...TrolleyPrice } trolleyItemCounts { __typename ...TrolleyItemCounts } }  fragment TrolleyResponse on TrolleyResponse { amendingOrder conflicts { __typename ...Conflict } orderId trolleyItems { __typename ...TrolleyItem } trolleyTotals { __typename ...TrolleyTotals } }  fragment TrolleyFailure on TrolleyFailure { message type }`,
-  
+
   EmptyTrolley: `mutation EmptyTrolley($orderId: ID!) { emptyTrolley(orderId: $orderId) { products { __typename ...TrolleyProduct } trolley { __typename ...TrolleyResponse } instantCheckout failures { __typename ...TrolleyFailure } } }  fragment TrolleyProductCategory on TrolleyProductCategory { id name }  fragment TrolleyPrice on Price { amount currencyCode }  fragment Quantity on Quantity { amount uom }  fragment QuantityPrice on QuantityPrice { price { __typename ...TrolleyPrice } quantity { __typename ...Quantity } }  fragment Hfss on Hfss { status }  fragment ProductImage on ProductImage { extraLarge large medium small }  fragment Group on Group { name }  fragment TrolleyProductPromotion on TrolleyProductPromotion { groups { __typename ...Group } myWaitrosePromotion promotionDescription promotionExpiryDate promotionId promotionTypeCode promotionUnitPrice { __typename ...TrolleyPrice } promotionalPricePerUnit discount { type } hidden }  fragment AvailableDate on AvailableDate { startDate endDate }  fragment Restriction on Restriction { availableDates { __typename ...AvailableDate } }  fragment ProductReview on ProductReview { averageRating reviewCount }  fragment ProductServings on ProductServings { max min }  fragment ProductWeight on ProductWeight { uoms }  fragment TrolleyProduct on TrolleyProduct { categories { __typename ...TrolleyProductCategory } currentSaleUnitPrice { __typename ...QuantityPrice } defaultQuantity { __typename ...Quantity } displayPrice displayPriceEstimated displayPriceQualifier formattedPriceRange formattedWeightRange hfss { __typename ...Hfss } id leadTime lineNumber maxPersonalisedMessageLength name brandName productImageUrls { __typename ...ProductImage } productType promotions { __typename ...TrolleyProductPromotion } restriction { __typename ...Restriction } reviews { __typename ...ProductReview } servings { __typename ...ProductServings } substitutionsProhibited size thumbnail weights { __typename ...ProductWeight } depositCharge { __typename ...TrolleyPrice } }  fragment SlotOptionDatesType on SlotOptionDatesType { date type }  fragment Conflict on Conflict { productId lineNumber messages priority outOfStock resolutionActions prohibitedActions itemId type slotOptionDates { __typename ...SlotOptionDatesType } }  fragment TrolleyItem on TrolleyItem { canSubstitute lineNumber noteToShopper personalisedMessage quantity { __typename ...Quantity } reservedQuantity totalPrice { __typename ...TrolleyPrice } triggeredPromotions trolleyItemId untriggeredPromotions }  fragment TrolleyItemCounts on TrolleyItemCounts { hardConflicts noConflicts softConflicts }  fragment TrolleyTotals on TrolleyTotals { collectionMinimumOrderValue { __typename ...TrolleyPrice } deliveryCharge { __typename ...TrolleyPrice } deliveryMinimumOrderValue { __typename ...TrolleyPrice } itemTotalEstimatedCost { __typename ...TrolleyPrice } minimumSpendThresholdMet savingsFromOffers { __typename ...TrolleyPrice } savingsFromMyWaitrose { __typename ...TrolleyPrice } totalDepositCharge { __typename ...TrolleyPrice } totalEstimatedCost { __typename ...TrolleyPrice } trolleyItemCounts { __typename ...TrolleyItemCounts } }  fragment TrolleyResponse on TrolleyResponse { amendingOrder conflicts { __typename ...Conflict } orderId trolleyItems { __typename ...TrolleyItem } trolleyTotals { __typename ...TrolleyTotals } }  fragment TrolleyFailure on TrolleyFailure { message type }`,
-  
+
   // Orders
   GetOrders: `query GetOrders($getPendingOrdersInput: GetOrdersInput, $getPreviousOrdersInput: GetOrdersInput, $getAmendingOrderInput: GetOrdersInput) { pendingOrders: getOrders(getOrdersInput: $getPendingOrdersInput) { content { __typename ...Order } links { rel title href } } previousOrders: getOrders(getOrdersInput: $getPreviousOrdersInput) { content { __typename ...Order } links { rel title href } } amendingOrder: getOrders(getOrdersInput: $getAmendingOrderInput) { content { __typename ...Order } } }  fragment Price on OrderPrice { amount currencyCode }  fragment OrderAddress on OrderAddress { id line1 line2 line3 postalCode town region country }  fragment OrderSlot on OrderSlot { branchId branchName branchAddress { __typename ...OrderAddress } type startDateTime endDateTime amendOrderCutoffDateTime deliveryAddress { __typename ...OrderAddress } status }  fragment Order on OrderContent { customerOrderId status created lastUpdated links { rel title href } totals { estimated { totalPrice { __typename ...Price } toPay { __typename ...Price } } actual { paid { __typename ...Price } } } slots { __typename ...OrderSlot } containsEntertainingLines orderLines { lineNumber } }`,
-  
+
   GetPendingOrders: `query GetPendingOrders($getPendingOrdersInput: GetOrdersInput) { pendingOrders: getOrders(getOrdersInput: $getPendingOrdersInput) { content { __typename ...Order } links { rel title href } } }  fragment Price on OrderPrice { amount currencyCode }  fragment OrderAddress on OrderAddress { id line1 line2 line3 postalCode town region country }  fragment OrderSlot on OrderSlot { branchId branchName branchAddress { __typename ...OrderAddress } type startDateTime endDateTime amendOrderCutoffDateTime deliveryAddress { __typename ...OrderAddress } status }  fragment Order on OrderContent { customerOrderId status created lastUpdated links { rel title href } totals { estimated { totalPrice { __typename ...Price } toPay { __typename ...Price } } actual { paid { __typename ...Price } } } slots { __typename ...OrderSlot } containsEntertainingLines orderLines { lineNumber } }`,
-  
+
   GetPreviousOrders: `query GetPreviousOrders($getPreviousOrdersInput: GetOrdersInput) { previousOrders: getOrders(getOrdersInput: $getPreviousOrdersInput) { content { __typename ...Order } links { rel title href } } }  fragment Price on OrderPrice { amount currencyCode }  fragment OrderAddress on OrderAddress { id line1 line2 line3 postalCode town region country }  fragment OrderSlot on OrderSlot { branchId branchName branchAddress { __typename ...OrderAddress } type startDateTime endDateTime amendOrderCutoffDateTime deliveryAddress { __typename ...OrderAddress } status }  fragment Order on OrderContent { customerOrderId status created lastUpdated links { rel title href } totals { estimated { totalPrice { __typename ...Price } toPay { __typename ...Price } } actual { paid { __typename ...Price } } } slots { __typename ...OrderSlot } containsEntertainingLines orderLines { lineNumber } }`,
-  
+
   GetOrder: `query GetOrder($customerOrderId: String) { getOrder(customerOrderId: $customerOrderId) { customerOrderId status created lastUpdated orderLines { __typename ...OrderLine } slots { __typename ...OrderSlot } containsEntertainingLines substitutionsAllowed bagless paperStatement links { rel title href } totals { actual { paid { __typename ...Price } savings { __typename ...Price } carrierBagCharge { __typename ...Price } deliveryCharge { __typename ...Price } depositCharge { __typename ...Price } offerSavings { __typename ...Price } partnerDiscountSavings { __typename ...Price } membershipSavings { __typename ...Price } pickedPrice { __typename ...Price } } estimated { giftCards { __typename ...Price } giftVouchers { __typename ...Price } paymentCard { __typename ...Price } carrierBagCharge { __typename ...Price } deliveryCharge { __typename ...Price } depositCharge { __typename ...Price } orderLines { __typename ...Price } offerSavings { __typename ...Price } membershipSavings { __typename ...Price } incentiveSavings { __typename ...Price } totalSavings { __typename ...Price } totalPrice { __typename ...Price } toPay { __typename ...Price } } } paymentInfo { giftCards { __typename ...OrderGiftCard } giftVouchers { __typename ...OrderGiftVoucher } cardPayment { __typename ...CardPayment } } } }  fragment Quantity on Quantity { amount uom }  fragment Price on OrderPrice { amount currencyCode }  fragment PersonalisedMessage on PersonalisedInfo { message }  fragment OrderLine on OrderLine { lineNumber orderLineStatus estimatedQuantity { __typename ...Quantity } quantity { __typename ...Quantity } estimatedUnitPrice { __typename ...Price } estimatedTotalPrice { __typename ...Price } estimatedDepositCharge { __typename ...Price } estimatedPrice { __typename ...Price } price { __typename ...Price } unitPrice { __typename ...Price } depositCharge { __typename ...Price } totalPrice { __typename ...Price } substitutionAllowed noteToShopper personalisedInfos { __typename ...PersonalisedMessage } }  fragment OrderAddress on OrderAddress { id line1 line2 line3 postalCode town region country }  fragment OrderSlot on OrderSlot { branchId branchName branchAddress { __typename ...OrderAddress } type startDateTime endDateTime amendOrderCutoffDateTime deliveryAddress { __typename ...OrderAddress } status }  fragment OrderGiftCard on OrderGiftCard { serialNumber remainingBalance { __typename ...Price } amountToDeduct { __typename ...Price } }  fragment OrderGiftVoucher on OrderGiftVoucher { serialNumber status value { __typename ...Price } }  fragment CardPayment on CardPayment { cardType cardholderName maskedCardNumber startDate expiryDate businessAccount billingAddress { __typename ...OrderAddress } }`,
-  
+
   CancelOrder: `mutation CancelOrder($input: ID!) { cancelOrder(customerOrderId: $input) { failures { __typename ...OrderFailure } } }  fragment OrderFailure on OrderFailure { type message }`,
-  
+
   InitiateAmendOrder: `mutation InitiateAmendOrder($input: ID!) { amendOrder(customerOrderId: $input) { failures { __typename ...OrderFailure } } }  fragment OrderFailure on OrderFailure { type message }`,
-  
+
   CancelAmendOrder: `mutation CancelAmendOrder($input: ID!) { cancelAmendOrder(customerOrderId: $input) { failures { __typename ...OrderFailure } } }  fragment OrderFailure on OrderFailure { type message }`,
-  
+
   // Slots
   CurrentSlot: `query CurrentSlot($input: CurrentSlotInput) { currentSlot(currentSlotInput: $input) { slotType branchId addressId postcode startDateTime endDateTime expiryDateTime orderCutoffDateTime amendOrderCutoffDateTime shopByDateTime deliveryCharge { amount currencyCode } slotGridType } }`,
-  
+
   SlotDates: `query SlotDates($slotDatesInput: SlotDatesInput) { slotDates(slotDatesInput: $slotDatesInput) { content { id dayOfWeek } failures { message type } } }`,
-  
+
   SlotDays: `query SlotDays($slotDaysInput: SlotDaysInput) { slotDays(slotDaysInput: $slotDaysInput) { content { id branchId slotType date slots { id startDateTime endDateTime shopByDateTime status slotGridType charge { currencyCode amount } greenSlot deliveryPassSlot } } failures { message type } variant } }`,
-  
+
   BookSlot: `mutation BookSlot($input: BookSlotInput) { bookSlot(bookSlotInput: $input) { slotExpiryDateTime orderCutoffDateTime amendOrderCutoffDateTime shopByDateTime failures { type message } variant } }`,
-  
+
   // Campaigns
   GetCampaigns: `query GetCampaigns { campaigns { id name marketingStartDate marketingEndDate startDate endDate } }`,
 };
@@ -204,7 +204,9 @@ export interface PlacedOrder {
 
 export class CheckoutOutcomeUnknownError extends Error {
   constructor(public readonly orderId: string) {
-    super(`Checkout outcome is unknown for order ${orderId}. Check getOrder before retrying; the order may have been placed.`);
+    super(
+      `Checkout outcome is unknown for order ${orderId}. Check getOrder before retrying; the order may have been placed.`,
+    );
     this.name = "CheckoutOutcomeUnknownError";
   }
 }
@@ -346,11 +348,11 @@ export interface Campaign {
 // ============================================================================
 
 /** Sort options for product search */
-export type SearchSortBy = 
-  | "RELEVANCE" 
-  | "PRICE_LOW_2_HIGH" 
-  | "PRICE_HIGH_2_LOW" 
-  | "A_2_Z" 
+export type SearchSortBy =
+  | "RELEVANCE"
+  | "PRICE_LOW_2_HIGH"
+  | "PRICE_HIGH_2_LOW"
+  | "A_2_Z"
   | "Z_2_A"
   | "TOP_RATED"
   | "MOST_POPULAR"
@@ -547,10 +549,10 @@ export class WaitroseApi {
       throw new Error(`HTTP ${response.status}: ${text}`);
     }
 
-    const json = await response.json() as GraphQLResponse<T>;
-    
+    const json = (await response.json()) as GraphQLResponse<T>;
+
     if (json.errors?.length) {
-      throw new Error(`GraphQL Error: ${json.errors.map(e => e.message).join(", ")}`);
+      throw new Error(`GraphQL Error: ${json.errors.map((e) => e.message).join(", ")}`);
     }
 
     return json as T;
@@ -559,7 +561,7 @@ export class WaitroseApi {
   /** Execute a REST API call to the content/search API */
   async #restApi(
     endpoint: "search" | "browse",
-    body: Record<string, unknown>
+    body: Record<string, unknown>,
   ): Promise<SearchResponse> {
     await this.#context();
     // Use -1 for anonymous users, customerId for logged-in users
@@ -578,7 +580,7 @@ export class WaitroseApi {
     }
 
     // The API returns products inside componentsAndProducts[].searchProduct
-    const raw = await response.json() as {
+    const raw = (await response.json()) as {
       totalMatches: number;
       productsInResultset?: number;
       componentsAndProducts?: Array<{ searchProduct?: SearchProduct }>;
@@ -616,7 +618,9 @@ export class WaitroseApi {
 
   /** Get the current shopping context */
   async getShoppingContext(): Promise<ShoppingContext> {
-    const result = await this.#graphql<{ data: { shoppingContext: ShoppingContext } }>(QUERIES.GetShoppingContext);
+    const result = await this.#graphql<{ data: { shoppingContext: ShoppingContext } }>(
+      QUERIES.GetShoppingContext,
+    );
     this.#customerId = result.data.shoppingContext.customerId;
     this.#customerOrderId = result.data.shoppingContext.customerOrderId;
     this.#defaultBranchId = result.data.shoppingContext.defaultBranchId;
@@ -629,11 +633,11 @@ export class WaitroseApi {
 
   /** Get account profile and membership info */
   async getAccountInfo(): Promise<{ profile: AccountProfile; memberships: Membership[] | null }> {
-    const result = await this.#graphql<{ 
-      data: { 
-        getAccountProfile: AccountProfile; 
-        getMemberships: { memberships: Membership[] } | null
-      } 
+    const result = await this.#graphql<{
+      data: {
+        getAccountProfile: AccountProfile;
+        getMemberships: { memberships: Membership[] } | null;
+      };
     }>(QUERIES.GetAccountInfoAndMembership);
 
     return {
@@ -654,7 +658,7 @@ export class WaitroseApi {
 
     const result = await this.#graphql<{ data: { getTrolley: TrolleyResponse } }>(
       QUERIES.GetTrolley,
-      { orderId: id }
+      { orderId: id },
     );
 
     return result.data.getTrolley;
@@ -667,19 +671,46 @@ export class WaitroseApi {
     if (!orderId) throw new Error("No current order available for checkout");
     const [trolley, slot] = await Promise.all([this.getTrolley(orderId), this.getCurrentSlot()]);
     const blockers: string[] = [];
-    if (trolley.trolley.orderId !== orderId) blockers.push("The trolley does not match the current order");
+    if (trolley.trolley.orderId !== orderId)
+      blockers.push("The trolley does not match the current order");
     if (trolley.failures?.length) blockers.push("Waitrose reported trolley failures");
-    if (trolley.instantCheckout !== "ALLOWED") blockers.push(`Instant checkout is ${trolley.instantCheckout ?? "unknown"}; complete payment setup or checkout on the Waitrose website`);
-    if (trolley.checkoutReadiness?.slotTypeValid !== true || !slot || !["DELIVERY", "COLLECTION"].includes(slot.slotType ?? "") || !Number.isFinite(Date.parse(slot.startDateTime ?? "")) || !Number.isFinite(Date.parse(slot.endDateTime ?? ""))) blockers.push("A valid delivery or collection slot is required");
-    if (slot?.expiryDateTime && !(Date.parse(slot.expiryDateTime) > Date.now())) blockers.push("The slot reservation has expired or its expiry is unknown");
+    if (trolley.instantCheckout !== "ALLOWED")
+      blockers.push(
+        `Instant checkout is ${trolley.instantCheckout ?? "unknown"}; complete payment setup or checkout on the Waitrose website`,
+      );
+    if (
+      trolley.checkoutReadiness?.slotTypeValid !== true ||
+      !slot ||
+      !["DELIVERY", "COLLECTION"].includes(slot.slotType ?? "") ||
+      !Number.isFinite(Date.parse(slot.startDateTime ?? "")) ||
+      !Number.isFinite(Date.parse(slot.endDateTime ?? ""))
+    )
+      blockers.push("A valid delivery or collection slot is required");
+    if (slot?.expiryDateTime && !(Date.parse(slot.expiryDateTime) > Date.now()))
+      blockers.push("The slot reservation has expired or its expiry is unknown");
     if (!trolley.trolley.trolleyItems.length) blockers.push("The trolley is empty");
-    if (trolley.trolley.trolleyTotals.minimumSpendThresholdMet !== true) blockers.push("The minimum spend requirement is not met or unknown");
-    if (trolley.trolley.trolleyTotals.trolleyItemCounts?.hardConflicts !== 0) blockers.push("Resolve trolley conflicts before checkout");
+    if (trolley.trolley.trolleyTotals.minimumSpendThresholdMet !== true)
+      blockers.push("The minimum spend requirement is not met or unknown");
+    if (trolley.trolley.trolleyTotals.trolleyItemCounts?.hardConflicts !== 0)
+      blockers.push("Resolve trolley conflicts before checkout");
     const estimatedTotal = trolley.trolley.trolleyTotals.totalEstimatedCost;
-    if (!estimatedTotal || !Number.isFinite(estimatedTotal.amount) || estimatedTotal.amount < 0 || !estimatedTotal.currencyCode) blockers.push("The estimated total is unavailable");
-    return { orderId, estimatedTotal, canPlaceOrder: blockers.length === 0, blockers,
-      instantCheckout: trolley.instantCheckout ?? null, trolley, slot,
-      checkoutUrl: "https://www.waitrose.com/ecom/checkout" };
+    if (
+      !estimatedTotal ||
+      !Number.isFinite(estimatedTotal.amount) ||
+      estimatedTotal.amount < 0 ||
+      !estimatedTotal.currencyCode
+    )
+      blockers.push("The estimated total is unavailable");
+    return {
+      orderId,
+      estimatedTotal,
+      canPlaceOrder: blockers.length === 0,
+      blockers,
+      instantCheckout: trolley.instantCheckout ?? null,
+      trolley,
+      slot,
+      checkoutUrl: "https://www.waitrose.com/ecom/checkout",
+    };
   }
 
   /**
@@ -688,33 +719,60 @@ export class WaitroseApi {
    * Totals are estimates; the provider can change them after this preflight.
    */
   async placeOrder(options: { orderId: string; expectedTotal: Price }): Promise<PlacedOrder> {
-    if (!/^[A-Za-z0-9_-]+$/.test(options.orderId) || !Number.isFinite(options.expectedTotal?.amount) || options.expectedTotal.amount < 0 || !options.expectedTotal.currencyCode) {
+    if (
+      !/^[A-Za-z0-9_-]+$/.test(options.orderId) ||
+      !Number.isFinite(options.expectedTotal?.amount) ||
+      options.expectedTotal.amount < 0 ||
+      !options.expectedTotal.currencyCode
+    ) {
       throw new Error("A reviewed order ID and expected total/currency are required");
     }
     const review = await this.getCheckout();
-    if (review.orderId !== options.orderId) throw new Error("The current order has changed; review checkout again");
+    if (review.orderId !== options.orderId)
+      throw new Error("The current order has changed; review checkout again");
     if (!review.canPlaceOrder) throw new Error(`Checkout blocked: ${review.blockers.join("; ")}`);
-    if (review.estimatedTotal.amount !== options.expectedTotal.amount || review.estimatedTotal.currencyCode !== options.expectedTotal.currencyCode) {
+    if (
+      review.estimatedTotal.amount !== options.expectedTotal.amount ||
+      review.estimatedTotal.currencyCode !== options.expectedTotal.currencyCode
+    ) {
       throw new Error("The estimated total has changed; review checkout again");
     }
     let response: Response;
     try {
-      response = await this.#fetch(`https://www.waitrose.com/api/order-orchestration-prod/v1/orders/${encodeURIComponent(options.orderId)}/place`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: this.#authorization, "User-Agent": USER_AGENT },
-        body: JSON.stringify({ instantCheckout: true, event: "PLACE" }),
-        redirect: "manual",
-        signal: AbortSignal.timeout(30_000),
-      });
+      response = await this.#fetch(
+        `https://www.waitrose.com/api/order-orchestration-prod/v1/orders/${encodeURIComponent(options.orderId)}/place`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: this.#authorization,
+            "User-Agent": USER_AGENT,
+          },
+          body: JSON.stringify({ instantCheckout: true, event: "PLACE" }),
+          redirect: "manual",
+          signal: AbortSignal.timeout(30_000),
+        },
+      );
     } catch {
       throw new CheckoutOutcomeUnknownError(options.orderId);
     }
     if (!response.ok) {
-      if (response.status >= 500 || response.status === 408) throw new CheckoutOutcomeUnknownError(options.orderId);
-      throw new Error(`Waitrose checkout rejected (${response.status}). Check the order and checkout eligibility before retrying.`);
+      if (response.status >= 500 || response.status === 408)
+        throw new CheckoutOutcomeUnknownError(options.orderId);
+      throw new Error(
+        `Waitrose checkout rejected (${response.status}). Check the order and checkout eligibility before retrying.`,
+      );
     }
-    const placed = await response.json().catch(() => null) as PlacedOrder | null;
-    if (!placed || placed.customerOrderId !== options.orderId || (!placed.totals || typeof placed.totals !== "object" || Array.isArray(placed.totals)) || !Array.isArray(placed.slots)) {
+    const placed = (await response.json().catch(() => null)) as PlacedOrder | null;
+    if (
+      !placed ||
+      placed.customerOrderId !== options.orderId ||
+      !placed.totals ||
+      typeof placed.totals !== "object" ||
+      Array.isArray(placed.totals) ||
+      !Array.isArray(placed.slots)
+    ) {
       throw new CheckoutOutcomeUnknownError(options.orderId);
     }
     return placed;
@@ -728,14 +786,18 @@ export class WaitroseApi {
 
     const result = await this.#graphql<{ data: { updateTrolleyItems: TrolleyResponse } }>(
       QUERIES.UpdateTrolleyItems,
-      { trolleyItemsInput: items, orderId: id }
+      { trolleyItemsInput: items, orderId: id },
     );
 
     return result.data.updateTrolleyItems;
   }
 
   /** Add an item to the trolley by line number */
-  async addToTrolley(lineNumber: string, quantity: number = 1, uom: UnitOfMeasure = "C62"): Promise<TrolleyResponse> {
+  async addToTrolley(
+    lineNumber: string,
+    quantity: number = 1,
+    uom: UnitOfMeasure = "C62",
+  ): Promise<TrolleyResponse> {
     return this.updateTrolleyItems([{ lineNumber, quantity: { amount: quantity, uom } }]);
   }
 
@@ -752,7 +814,7 @@ export class WaitroseApi {
 
     const result = await this.#graphql<{ data: { emptyTrolley: TrolleyResponse } }>(
       QUERIES.EmptyTrolley,
-      { orderId: id }
+      { orderId: id },
     );
 
     return result.data.emptyTrolley;
@@ -762,7 +824,7 @@ export class WaitroseApi {
   // Orders
   // ==========================================================================
 
-  /** 
+  /**
    * Get all orders (pending and previous)
    * @param limit Max number of orders per category (API max is 15)
    */
@@ -775,66 +837,66 @@ export class WaitroseApi {
     return { pending, previous };
   }
 
-  /** 
+  /**
    * Get pending orders only
    * @param limit Max number of orders to return (API max is 15)
    */
   async getPendingOrders(limit: number = 10): Promise<Order[]> {
     // API has a max page size of 15
     const effectiveLimit = Math.min(limit, 15);
-    
+
     const result = await this.#graphql<{ data: { pendingOrders: { content: Order[] } } }>(
       QUERIES.GetPendingOrders,
-      { 
-        getPendingOrdersInput: { 
-          size: effectiveLimit, 
-          sortBy: "+",  // ASCENDING
-          statuses: ["PAYMENT_FAILED", "PLACED", "FULFIL", "PAID", "PICKED"]
-        } 
-      }
+      {
+        getPendingOrdersInput: {
+          size: effectiveLimit,
+          sortBy: "+", // ASCENDING
+          statuses: ["PAYMENT_FAILED", "PLACED", "FULFIL", "PAID", "PICKED"],
+        },
+      },
     );
     return result.data.pendingOrders?.content || [];
   }
 
-  /** 
+  /**
    * Get previous/completed orders
    * @param limit Max number of orders to return (API max is 15)
    */
   async getPreviousOrders(limit: number = 10): Promise<Order[]> {
     // API has a max page size of 15
     const effectiveLimit = Math.min(limit, 15);
-    
+
     const result = await this.#graphql<{ data: { previousOrders: { content: Order[] } } }>(
       QUERIES.GetPreviousOrders,
-      { 
-        getPreviousOrdersInput: { 
-          size: effectiveLimit, 
-          sortBy: "-",  // DESCENDING
-          statuses: ["COMPLETED", "CANCELLED", "REFUND_PENDING"]
-        } 
-      }
+      {
+        getPreviousOrdersInput: {
+          size: effectiveLimit,
+          sortBy: "-", // DESCENDING
+          statuses: ["COMPLETED", "CANCELLED", "REFUND_PENDING"],
+        },
+      },
     );
     return result.data.previousOrders?.content || [];
   }
 
   /** Get details for a specific order */
   async getOrder(customerOrderId: string): Promise<OrderDetails> {
-    const result = await this.#graphql<{ data: { getOrder: OrderDetails } }>(
-      QUERIES.GetOrder,
-      { customerOrderId }
-    );
+    const result = await this.#graphql<{ data: { getOrder: OrderDetails } }>(QUERIES.GetOrder, {
+      customerOrderId,
+    });
     return result.data.getOrder;
   }
 
   /** Cancel an order */
   async cancelOrder(customerOrderId: string): Promise<void> {
-    const result = await this.#graphql<{ data: { cancelOrder: { failures: ApiFailure[] | null } } }>(
-      QUERIES.CancelOrder,
-      { input: customerOrderId }
-    );
+    const result = await this.#graphql<{
+      data: { cancelOrder: { failures: ApiFailure[] | null } };
+    }>(QUERIES.CancelOrder, { input: customerOrderId });
 
     if (result.data.cancelOrder.failures?.length) {
-      throw new Error(`Cancel failed: ${result.data.cancelOrder.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Cancel failed: ${result.data.cancelOrder.failures.map((f) => f.message).join(", ")}`,
+      );
     }
   }
 
@@ -842,23 +904,26 @@ export class WaitroseApi {
   async initiateAmendOrder(customerOrderId: string): Promise<void> {
     const result = await this.#graphql<{ data: { amendOrder: { failures: ApiFailure[] | null } } }>(
       QUERIES.InitiateAmendOrder,
-      { input: customerOrderId }
+      { input: customerOrderId },
     );
 
     if (result.data.amendOrder.failures?.length) {
-      throw new Error(`Amend failed: ${result.data.amendOrder.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Amend failed: ${result.data.amendOrder.failures.map((f) => f.message).join(", ")}`,
+      );
     }
   }
 
   /** Cancel amending an order */
   async cancelAmendOrder(customerOrderId: string): Promise<void> {
-    const result = await this.#graphql<{ data: { cancelAmendOrder: { failures: ApiFailure[] | null } } }>(
-      QUERIES.CancelAmendOrder,
-      { input: customerOrderId }
-    );
+    const result = await this.#graphql<{
+      data: { cancelAmendOrder: { failures: ApiFailure[] | null } };
+    }>(QUERIES.CancelAmendOrder, { input: customerOrderId });
 
     if (result.data.cancelAmendOrder.failures?.length) {
-      throw new Error(`Cancel amend failed: ${result.data.cancelAmendOrder.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Cancel amend failed: ${result.data.cancelAmendOrder.failures.map((f) => f.message).join(", ")}`,
+      );
     }
   }
 
@@ -871,21 +936,25 @@ export class WaitroseApi {
     await this.#context();
     const result = await this.#graphql<{ data: { currentSlot: CurrentSlot | null } }>(
       QUERIES.CurrentSlot,
-      { input: { postcode, customerOrderId: this.#customerOrderId } }
+      { input: { postcode, customerOrderId: this.#customerOrderId } },
     );
     return result.data.currentSlot;
   }
 
   /** Get available slot dates */
-  async getSlotDates(slotType: SlotType, branchId?: string, addressId?: string): Promise<SlotDate[]> {
+  async getSlotDates(
+    slotType: SlotType,
+    branchId?: string,
+    addressId?: string,
+  ): Promise<SlotDate[]> {
     await this.#context();
-    const result = await this.#graphql<{ 
-      data: { 
-        slotDates: { 
+    const result = await this.#graphql<{
+      data: {
+        slotDates: {
           content: SlotDate[];
           failures: ApiFailure[] | null;
-        } 
-      } 
+        };
+      };
     }>(QUERIES.SlotDates, {
       slotDatesInput: {
         slotType,
@@ -896,22 +965,29 @@ export class WaitroseApi {
     });
 
     if (result.data.slotDates.failures?.length) {
-      throw new Error(`Get slots failed: ${result.data.slotDates.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Get slots failed: ${result.data.slotDates.failures.map((f) => f.message).join(", ")}`,
+      );
     }
 
     return result.data.slotDates.content;
   }
 
   /** Get available slots for specific days */
-  async getSlotDays(slotType: SlotType, fromDate: string, branchId?: string, addressId?: string): Promise<SlotDay[]> {
+  async getSlotDays(
+    slotType: SlotType,
+    fromDate: string,
+    branchId?: string,
+    addressId?: string,
+  ): Promise<SlotDay[]> {
     await this.#context();
-    const result = await this.#graphql<{ 
-      data: { 
-        slotDays: { 
+    const result = await this.#graphql<{
+      data: {
+        slotDays: {
           content: SlotDay[];
           failures: ApiFailure[] | null;
-        } 
-      } 
+        };
+      };
     }>(QUERIES.SlotDays, {
       slotDaysInput: {
         slotType,
@@ -923,7 +999,9 @@ export class WaitroseApi {
     });
 
     if (result.data.slotDays.failures?.length) {
-      throw new Error(`Get slot days failed: ${result.data.slotDays.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Get slot days failed: ${result.data.slotDays.failures.map((f) => f.message).join(", ")}`,
+      );
     }
 
     return result.data.slotDays.content;
@@ -931,10 +1009,10 @@ export class WaitroseApi {
 
   /** Book a delivery/collection slot */
   async bookSlot(slotId: string, slotType: SlotType, addressId?: string): Promise<BookSlotResult> {
-    const result = await this.#graphql<{ 
-      data: { 
+    const result = await this.#graphql<{
+      data: {
         bookSlot: BookSlotResult & { failures: ApiFailure[] | null };
-      } 
+      };
     }>(QUERIES.BookSlot, {
       input: {
         slotId,
@@ -944,7 +1022,9 @@ export class WaitroseApi {
     });
 
     if (result.data.bookSlot.failures?.length) {
-      throw new Error(`Book slot failed: ${result.data.bookSlot.failures.map(f => f.message).join(", ")}`);
+      throw new Error(
+        `Book slot failed: ${result.data.bookSlot.failures.map((f) => f.message).join(", ")}`,
+      );
     }
 
     return result.data.bookSlot;
@@ -956,9 +1036,7 @@ export class WaitroseApi {
 
   /** Get active campaigns */
   async getCampaigns(): Promise<Campaign[]> {
-    const result = await this.#graphql<{ data: { campaigns: Campaign[] } }>(
-      QUERIES.GetCampaigns
-    );
+    const result = await this.#graphql<{ data: { campaigns: Campaign[] } }>(QUERIES.GetCampaigns);
     return result.data.campaigns;
   }
 
@@ -968,12 +1046,12 @@ export class WaitroseApi {
 
   /**
    * Search for products by text query
-   * 
+   *
    * @example
    * ```ts
    * // Simple search
    * const results = await client.searchProducts("organic milk");
-   * 
+   *
    * // Search with options (size defaults to API default, max ~128)
    * const results = await client.searchProducts("milk", {
    *   sortBy: "PRICE_LOW_2_HIGH",
@@ -983,7 +1061,7 @@ export class WaitroseApi {
    */
   async searchProducts(
     searchTerm: string,
-    options: Omit<SearchQueryParams, "searchTerm" | "category"> = {}
+    options: Omit<SearchQueryParams, "searchTerm" | "category"> = {},
   ): Promise<SearchResponse> {
     await this.#context();
     const queryParams: SearchQueryParams = {
@@ -1005,12 +1083,12 @@ export class WaitroseApi {
 
   /**
    * Browse products by category
-   * 
+   *
    * @example
    * ```ts
    * // Browse a category
    * const results = await client.browseProducts("groceries/bakery/bread");
-   * 
+   *
    * // Browse with sorting
    * const results = await client.browseProducts("groceries/dairy", {
    *   sortBy: "MOST_POPULAR"
@@ -1019,7 +1097,7 @@ export class WaitroseApi {
    */
   async browseProducts(
     category: string,
-    options: Omit<SearchQueryParams, "searchTerm" | "category"> = {}
+    options: Omit<SearchQueryParams, "searchTerm" | "category"> = {},
   ): Promise<SearchResponse> {
     await this.#context();
     const queryParams: SearchQueryParams = {
@@ -1041,7 +1119,7 @@ export class WaitroseApi {
 
   /**
    * Get product details by line numbers
-   * 
+   *
    * @example
    * ```ts
    * const products = await client.getProductsByLineNumbers(["123456", "789012"]);
@@ -1081,13 +1159,13 @@ export class WaitroseApi {
       throw new Error(`HTTP ${response.status}: ${text}`);
     }
 
-    const result = await response.json() as { products?: ProductDetail[] };
+    const result = (await response.json()) as { products?: ProductDetail[] };
     return result.products || [];
   }
 
   /**
    * Get products on promotion
-   * 
+   *
    * @example
    * ```ts
    * const results = await client.getPromotionProducts("myWaitrose");
@@ -1095,7 +1173,7 @@ export class WaitroseApi {
    */
   async getPromotionProducts(
     promotionId: string,
-    options: Omit<SearchQueryParams, "searchTerm" | "category" | "promotionId"> = {}
+    options: Omit<SearchQueryParams, "searchTerm" | "category" | "promotionId"> = {},
   ): Promise<SearchResponse> {
     await this.#context();
     const queryParams: SearchQueryParams = {
@@ -1116,7 +1194,7 @@ export class WaitroseApi {
 
   /**
    * Search with filters
-   * 
+   *
    * @example
    * ```ts
    * const results = await client.searchWithFilters("milk", {
@@ -1135,7 +1213,7 @@ export class WaitroseApi {
       sortBy?: SearchSortBy;
       start?: number;
       size?: number;
-    }
+    },
   ): Promise<SearchResponse> {
     await this.#context();
     return this.searchProducts(searchTerm, filters);
@@ -1143,7 +1221,7 @@ export class WaitroseApi {
 
   /**
    * Paginated search helper
-   * 
+   *
    * @example
    * ```ts
    * // Get page 2 (products 24-47)
@@ -1154,7 +1232,7 @@ export class WaitroseApi {
     searchTerm: string,
     page: number,
     pageSize: number = 24,
-    options: Omit<SearchQueryParams, "searchTerm" | "category" | "start" | "size"> = {}
+    options: Omit<SearchQueryParams, "searchTerm" | "category" | "start" | "size"> = {},
   ): Promise<SearchResponse> {
     return this.searchProducts(searchTerm, {
       ...options,
@@ -1163,5 +1241,3 @@ export class WaitroseApi {
     });
   }
 }
-
-

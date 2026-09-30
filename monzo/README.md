@@ -110,7 +110,12 @@ async (itx) => {
   });
   const { accounts } = await mcp.callTool("list_accounts");
   await mcp.close();
-  return accounts.map((a) => ({ id: a.id, type: a.type, description: a.description, owners: a.owners?.map((o) => o.preferred_name) }));
+  return accounts.map((a) => ({
+    id: a.id,
+    type: a.type,
+    description: a.description,
+    owners: a.owners?.map((o) => o.preferred_name),
+  }));
 };
 ```
 
@@ -143,7 +148,9 @@ async (itx) => {
     const { webhooks } = await mcp.callTool("list_webhooks", { account_id: accountId });
     for (const old of webhooks.filter((hook) => hook.url.startsWith(mine)))
       await mcp.callTool("delete_webhook", { webhook_id: old.id });
-    await itx.secrets.set(`/secrets/monzo-webhook-${name}`, secret, { urls: ["https://monzo.invalid"] });
+    await itx.secrets.set(`/secrets/monzo-webhook-${name}`, secret, {
+      urls: ["https://monzo.invalid"],
+    });
     const registered = await mcp.callTool("register_webhook", { account_id: accountId, url });
     return { name, webhook: JSON.parse(JSON.stringify(registered).replaceAll(secret, "<secret>")) };
   } finally {
@@ -170,7 +177,14 @@ async (itx) => {
     timeoutMs: 110_000,
   });
   const t = payload.transaction;
-  return { name, id: t.id, amount: t.amount, currency: t.currency, description: t.description, merchant: t.merchant?.name };
+  return {
+    name,
+    id: t.id,
+    amount: t.amount,
+    currency: t.currency,
+    description: t.description,
+    merchant: t.merchant?.name,
+  };
 };
 ```
 
@@ -186,7 +200,18 @@ On the stream `/monzo/<account name>`:
 {
   "type": "monzo/transaction-created",
   "idempotencyKey": "monzo:tx_0000…",
-  "payload": { "transactionId": "tx_0000…", "transaction": { "id": "tx_0000…", "account_id": "acc_0000…", "amount": -510, "currency": "GBP", "description": "COFFEE", "merchant": { }, "created": "…" } }
+  "payload": {
+    "transactionId": "tx_0000…",
+    "transaction": {
+      "id": "tx_0000…",
+      "account_id": "acc_0000…",
+      "amount": -510,
+      "currency": "GBP",
+      "description": "COFFEE",
+      "merchant": {},
+      "created": "…"
+    }
+  }
 }
 ```
 

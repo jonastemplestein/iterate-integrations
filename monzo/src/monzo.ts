@@ -14,7 +14,9 @@ export async function receiveMonzoTransaction(
   withItx: <T>(call: (itx: IterateContextApi) => T) => Promise<Awaited<T>>,
 ): Promise<Response> {
   if (request.method !== "POST") return new Response("POST only\n", { status: 405 });
-  const [, account = "", presented = ""] = new URL(request.url).pathname.split("/").map(decodeURIComponent);
+  const [, account = "", presented = ""] = new URL(request.url).pathname
+    .split("/")
+    .map(decodeURIComponent);
   const known =
     ACCOUNT_NAME.test(account) &&
     presented !== "" &&
@@ -24,7 +26,10 @@ export async function receiveMonzoTransaction(
   // an unknown account, or a wrong or missing secret, looks like any other path
   if (!known) return new Response("Not found\n", { status: 404 });
 
-  const body = (await request.json().catch(() => null)) as { type?: unknown; data?: { id?: unknown } } | null; // Monzo's documented shape; each field is checked below
+  const body = (await request.json().catch(() => null)) as {
+    type?: unknown;
+    data?: { id?: unknown };
+  } | null; // Monzo's documented shape; each field is checked below
   if (body?.type !== "transaction.created")
     return Response.json({
       ok: true,

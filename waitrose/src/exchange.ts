@@ -35,7 +35,10 @@ export async function exchange(
   if (!response.ok) throw new Error(`waitrose: login answered HTTP ${response.status}`);
   const answer = (await response.json().catch(() => null)) as {
     data?: {
-      generateSession?: { accessToken?: string | null; failures?: { type: string }[] | null } | null;
+      generateSession?: {
+        accessToken?: string | null;
+        failures?: { type: string }[] | null;
+      } | null;
     } | null;
   } | null;
   const session = answer?.data?.generateSession;

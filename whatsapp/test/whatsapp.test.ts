@@ -24,7 +24,11 @@ test("the pretend WhatsApp, lent: calls, events, media, refused urls, and messag
 
   // a send comes back as Baileys' message, as JSON, and lands as an `append`
   const sent = await lent.sendMessage("447700900002@s.whatsapp.net", { text: "hi" });
-  assert.deepEqual(sent.key, { remoteJid: "447700900002@s.whatsapp.net", fromMe: true, id: sent.key.id });
+  assert.deepEqual(sent.key, {
+    remoteJid: "447700900002@s.whatsapp.net",
+    fromMe: true,
+    id: sent.key.id,
+  });
   await project.settled();
   assert.deepEqual(project.events.at(-1), {
     type: "whatsapp/message-added",
@@ -49,18 +53,27 @@ test("the pretend WhatsApp, lent: calls, events, media, refused urls, and messag
   });
   assert.deepEqual([...(await lent.downloadMedia(withImage))], [1, 2, 3]);
   for (const url of ["/etc/passwd", "file:///etc/passwd", "http://192.168.1.1/"])
-    await assert.rejects(lent.sendMessage("447700900002@s.whatsapp.net", { document: { url } }), /must be https: or data:/);
+    await assert.rejects(
+      lent.sendMessage("447700900002@s.whatsapp.net", { document: { url } }),
+      /must be https: or data:/,
+    );
 
   // the project unreachable: messages wait, then arrive once over the next connection
   project.failing = true;
-  await lent.simulateIncomingMessage({ from: "447700900003@s.whatsapp.net", text: "while you were away" });
+  await lent.simulateIncomingMessage({
+    from: "447700900003@s.whatsapp.net",
+    text: "while you were away",
+  });
   await project.settled();
   const before = project.events.length;
   project.failing = false;
   await provideDummy({ itx: project.itx }); // what `iterate provide` does on its next connection
   await project.settled();
   assert.equal(project.events.length, before + 1);
-  assert.equal((project.events.at(-1)!.payload.message as any).message.conversation, "while you were away");
+  assert.equal(
+    (project.events.at(-1)!.payload.message as any).message.conversation,
+    "while you were away",
+  );
 });
 
 test("a message WhatsApp delivers again with a different body stays one event, and never holds up the next", async () => {
@@ -79,13 +92,20 @@ test("a message WhatsApp delivers again with a different body stays one event, a
   ev.emit("messages.upsert", { type: "notify", messages: [message("A", "first")] });
   await project.settled();
   // the same message as an `append`, in one batch with a new one: the platform refuses the batch
-  ev.emit("messages.upsert", { type: "append", messages: [message("A", "first"), message("B", "second")] });
+  ev.emit("messages.upsert", {
+    type: "append",
+    messages: [message("A", "first"), message("B", "second")],
+  });
   await project.settled();
   ev.emit("messages.upsert", { type: "notify", messages: [message("C", "third")] });
   await project.settled();
   assert.deepEqual(
     project.events.map((event) => [event.payload.type, (event.payload.message as any).key.id]),
-    [["notify", "A"], ["append", "B"], ["notify", "C"]],
+    [
+      ["notify", "A"],
+      ["append", "B"],
+      ["notify", "C"],
+    ],
   );
 });
 
@@ -112,7 +132,9 @@ function pretendProject() {
           const held = (event: MessageAdded) =>
             project.events.findIndex((kept) => kept.idempotencyKey === event.idempotencyKey);
           const conflict = events.find(
-            (event) => held(event) >= 0 && JSON.stringify(project.events[held(event)]) !== JSON.stringify(event),
+            (event) =>
+              held(event) >= 0 &&
+              JSON.stringify(project.events[held(event)]) !== JSON.stringify(event),
           );
           const call: Promise<unknown> = project.failing
             ? Promise.reject(new Error("the project is unreachable"))

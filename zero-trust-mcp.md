@@ -7,8 +7,8 @@ in chat).
 
 [zero-trust-mcp](https://github.com/iterate/zero-trust-mcp) is a small Cloudflare Worker that puts
 one third party's API behind an MCP server (`/monzo/mcp`, `/yoto/mcp`, `/waitrose/mcp`) and stores
-nothing: the person's upstream credentials live encrypted *inside the OAuth tokens the MCP client
-holds*, and iterate is that client. So the project ends up holding one secret,
+nothing: the person's upstream credentials live encrypted _inside the OAuth tokens the MCP client
+holds_, and iterate is that client. So the project ends up holding one secret,
 `/secrets/<integration>`, which iterate's platform keeps refreshed, and the Worker holds no copy of
 anything that can call the third party.
 
@@ -32,8 +32,14 @@ with open client registration:
 ```js
 async (itx) => {
   const base = "<base>";
-  const metadata = await (await itx.fetch(new Request(`${base}/.well-known/oauth-authorization-server/<integration>`))).json();
-  return { authorize: metadata.authorization_endpoint, token: metadata.token_endpoint, register: metadata.registration_endpoint };
+  const metadata = await (
+    await itx.fetch(new Request(`${base}/.well-known/oauth-authorization-server/<integration>`))
+  ).json();
+  return {
+    authorize: metadata.authorization_endpoint,
+    token: metadata.token_endpoint,
+    register: metadata.registration_endpoint,
+  };
 };
 ```
 
@@ -93,7 +99,10 @@ async (itx) => {
   return itx
     .cd(path)
     .waitForEvent({ type: "events.iterate.com/secret/set", timeoutMs: 100_000 })
-    .then(() => "saved", () => "not saved yet");
+    .then(
+      () => "saved",
+      () => "not saved yet",
+    );
 };
 ```
 
@@ -105,7 +114,9 @@ The link works for an hour; if it lapsed, run step 2 again for a new one.
 ```js
 async (itx) => {
   const mcp = await itx.connectToMcp("<base>/<integration>/mcp", {
-    headers: { authorization: 'Bearer getSecret("/secrets/<integration>", { field: "accessToken" })' },
+    headers: {
+      authorization: 'Bearer getSecret("/secrets/<integration>", { field: "accessToken" })',
+    },
   });
   const tools = (await mcp.listTools()).map((tool) => tool.name);
   await mcp.close();

@@ -42,7 +42,7 @@ Try it from the project:
 async (itx) => {
   const [me] = await itx.whatsapp.onWhatsApp("+44 7700 900123");
   return await itx.whatsapp.sendMessage(me.jid, { text: "hello from iterate" });
-}
+};
 ```
 
 To keep it running unattended, give it a key of its own instead of `iterate login` (whose grant

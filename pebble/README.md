@@ -13,7 +13,7 @@ Ask the person which of these is not done yet, and walk them through it:
 2. **Pair the Index 01 ring** with the phone by following the app's onboarding, and check a
    recording works: hold the ring's button, talk, and see the recording and its transcript appear
    in the app. If that doesn't work, the webhook can't work either.
-3. **Know the two gestures.** *Hold & talk* (single click, then hold) and *Double click & hold* are
+3. **Know the two gestures.** _Hold & talk_ (single click, then hold) and _Double click & hold_ are
    the two ways to record, and each has its own webhook settings. Decide which one should reach
    iterate; step 4 configures one or both.
 
@@ -42,7 +42,8 @@ async (itx) =>
   itx.secrets.collectFromUser({
     path: "/secrets/pebble-webhook",
     egress: { urls: ["https://pebble.invalid"] }, // only ever compared, never sent anywhere
-    description: "The signing secret for your Pebble Index webhook: the same value you'll type into the Pebble app's **Sign requests** field.",
+    description:
+      "The signing secret for your Pebble Index webhook: the same value you'll type into the Pebble app's **Sign requests** field.",
   });
 ```
 
@@ -139,7 +140,10 @@ async (itx) => {
     type: "pebble/recording-created",
     timeoutMs: 110_000,
   });
-  return { payload, download: payload.audioPath && (await itx.files.get(payload.audioPath).url()).url };
+  return {
+    payload,
+    download: payload.audioPath && (await itx.files.get(payload.audioPath).url()).url,
+  };
 };
 ```
 

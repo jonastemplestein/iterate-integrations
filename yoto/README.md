@@ -19,7 +19,7 @@ The person needs a Yoto developer application of their own:
    `<base>/yoto/callback`, where `<base>` is the zero-trust-mcp Worker's origin (see
    [which server](../zero-trust-mcp.md#which-server); its setup page shows the callback with a copy button).
 3. Enable these scopes: `family:library:view user:content:manage family:devices:view
-   family:devices:control family:devices:manage offline_access`. (Drop the `devices:control` and
+family:devices:control family:devices:manage offline_access`. (Drop the `devices:control` and
    `devices:manage` ones for a read-only connection; playback and volume then fail.)
 4. Keep the **Client ID** and **Client secret** handy: the Worker's setup page asks for them in
    step 1. They never go into a chat or into iterate.
@@ -57,7 +57,7 @@ Players back is the proof. Then write the connection down for the project's agen
 [README](https://github.com/iterate/zero-trust-mcp#yoto) and [authoring notes](https://github.com/iterate/zero-trust-mcp/blob/main/docs/yoto-authoring.md)
 have the arguments and the limits.
 
-- Commands report that Yoto *accepted* them, not that the player did them.
+- Commands report that Yoto _accepted_ them, not that the player did them.
 - `set_volume` is a percentage (0–100) of the current playback; `set_volume_limit` is 0–16 steps.
 - Audio and images come in as public HTTPS URLs, up to 20 MiB and 5 MiB. A project file works: mint
   a link with `itx.files.get(path).url()` (valid for a week) and pass it as the URL.
