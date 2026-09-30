@@ -46,4 +46,4 @@ export async function exchange(
 }
 
 /** The exchange as the module text a secret's `refresh.source` takes. */
-export const EXCHANGE_SOURCE = `export ${exchange.toString()}`;
+export const EXCHANGE_SOURCE: string = `export ${exchange.toString()}`;

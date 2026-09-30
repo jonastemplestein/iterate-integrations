@@ -168,7 +168,8 @@ export interface Trolley {
 }
 
 export interface TrolleyResponse {
-  instantCheckout?: "ALLOWED" | "NOT_ALLOWED" | "THRESHOLD_EXCEEDED" | string;
+  // the known values, and any other string Waitrose may add
+  instantCheckout?: "ALLOWED" | "NOT_ALLOWED" | "THRESHOLD_EXCEEDED" | (string & {});
   checkoutReadiness?: { slotTypeValid: boolean };
   products: TrolleyProduct[];
   trolley: Trolley;

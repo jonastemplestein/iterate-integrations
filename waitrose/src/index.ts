@@ -5,6 +5,7 @@ export * from "./client.js";
 export { exchange, EXCHANGE_SOURCE } from "./exchange.js";
 
 type WaitroseMethods = { [Method in keyof WaitroseApi]: WaitroseApi[Method] };
+// oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- the class defines every one of these methods on its prototype (the static block below), from WaitroseApi's own
 export interface Waitrose extends WaitroseMethods {}
 
 /** THE WAITROSE API AS A CAP'N WEB RPC TARGET: every method of `WaitroseApi` (search, trolley,

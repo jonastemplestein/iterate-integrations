@@ -1,7 +1,7 @@
-// Runs against dist (the package as shipped): `npm test` builds first. The Waitrose class itself
+// Runs against dist (the package as shipped): `pnpm test` builds first. The Waitrose class itself
 // extends workerd's RpcTarget, so it is exercised in an iterate project, not here.
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { WaitroseApi } from "../dist/client.js";
 import { EXCHANGE_SOURCE, exchange } from "../dist/exchange.js";
 

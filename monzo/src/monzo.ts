@@ -26,7 +26,10 @@ export async function receiveMonzoTransaction(
 
   const body = (await request.json().catch(() => null)) as { type?: unknown; data?: { id?: unknown } } | null; // Monzo's documented shape; each field is checked below
   if (body?.type !== "transaction.created")
-    return Response.json({ ok: true, ignored: String(body?.type ?? "not JSON") });
+    return Response.json({
+      ok: true,
+      ignored: typeof body?.type === "string" ? body.type : body ? "no type" : "not JSON",
+    });
   const transactionId = body.data?.id;
   if (typeof transactionId !== "string" || !transactionId)
     return new Response("no transaction id\n", { status: 400 });

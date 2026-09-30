@@ -16,3 +16,16 @@ CI and served by [pkg.pr.new](https://pkg.pr.new) (never npm): a project's confi
 [`zero-trust-mcp.md`](zero-trust-mcp.md) is the shared step behind Monzo and Yoto: connecting a
 [zero-trust-mcp](https://github.com/iterate/zero-trust-mcp) server, which keeps no credentials of its
 own, to a project. A folder without a package is just a recipe.
+
+## Working on this repo
+
+pnpm and [Vite+](https://viteplus.dev) (oxfmt, oxlint with type checking, Vitest, tsdown):
+
+```sh
+pnpm install   # also builds every package (the tests and the type check read dist) and installs the pre-commit hook
+pnpm check     # vp check: format, lint, type-check
+pnpm test      # each package's tests, against a fresh build
+```
+
+A commit runs `vp check --fix` on its staged files. A package's build is its `vite.config.ts`
+(`vp pack`); the rest of the toolchain is the root `vite.config.ts`.

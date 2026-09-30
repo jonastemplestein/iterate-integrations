@@ -13,8 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p .",
-    "typecheck": "tsc -p . --noEmit"
+    "build": "vp pack"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260925.1",

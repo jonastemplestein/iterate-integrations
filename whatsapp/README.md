@@ -27,7 +27,7 @@ You need Node 22.18 or later, an `iterate` CLI with `provide`
 
 ```sh
 git clone https://github.com/jonastemplestein/iterategrations && cd iterategrations
-npm install                                        # Baileys, into this folder's node_modules
+pnpm install                                       # Baileys, into whatsapp/node_modules
 iterate provide whatsapp/src/whatsapp.ts --project <your project>
 ```
 

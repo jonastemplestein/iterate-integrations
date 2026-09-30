@@ -13,7 +13,8 @@
     ],
     "declaration": true,
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "isolatedDeclarations": true
   },
   "include": [
     "src"

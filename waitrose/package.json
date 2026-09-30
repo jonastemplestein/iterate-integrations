@@ -13,12 +13,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p .",
-    "typecheck": "tsc -p . --noEmit",
-    "test": "npm run build && node --test \"test/*.test.ts\""
+    "build": "vp pack",
+    "test": "vp pack && vp test"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260925.1",
+    "@types/node": "^24.0.0",
     "typescript": "^7.0.2"
   }
 }

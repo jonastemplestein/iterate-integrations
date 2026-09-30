@@ -1,14 +1,13 @@
 {
   "private": true,
-  "workspaces": [
-    "pebble",
-    "waitrose",
-    "monzo",
-    "whatsapp"
-  ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces",
-    "test": "npm test --workspaces --if-present"
+    "build": "pnpm -r --if-present build",
+    "check": "vp check",
+    "test": "pnpm -r --if-present test",
+    "prepare": "vp config && pnpm -r --if-present build"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "devDependencies": {
+    "vite-plus": "catalog:"
   }
 }

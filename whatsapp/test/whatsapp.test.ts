@@ -5,7 +5,7 @@
 // The same lend through a real deployment is the README's walkthrough.
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import test from "node:test";
+import { test } from "vite-plus/test";
 import provideDummy from "../src/dummy.ts";
 import provideWhatsApp, { description, provideWhatsApp as lendOver } from "../src/whatsapp.ts";
 import type { Itx, MessageAdded } from "../src/whatsapp.ts";

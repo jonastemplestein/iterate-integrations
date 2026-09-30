@@ -28,7 +28,7 @@ function makeDummySocket() {
     if (upload instanceof Uint8Array) return upload;
     const { url } = upload as { url: string | URL };
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`dummy WhatsApp: ${url} answered ${response.status}`);
+    if (!response.ok) throw new Error(`dummy WhatsApp: ${String(url)} answered ${response.status}`);
     return new Uint8Array(await response.arrayBuffer());
   };
   /** A media message as Baileys receives it: a CDN url, a key and a length, the bytes kept here. */

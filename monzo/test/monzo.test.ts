@@ -1,7 +1,7 @@
 // Runs against dist, the package as shipped. `withItx` is a fake project: a secret, and streams
 // that keep what is appended to them.
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { receiveMonzoTransaction } from "../dist/monzo.js";
 
 // each account has its own secret, at /secrets/monzo-webhook-<account>

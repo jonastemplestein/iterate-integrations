@@ -37,38 +37,39 @@ async (itx) =>
   });
 ```
 
+<!-- prettier-ignore -->
 ```js
 export async function exchange(material, fetch) {
-    const graphqlUrl = "https://www.waitrose.com/api/graphql-prod/graph/live";
-    const newSession = "mutation NewSession($input: SessionInput) { generateSession(session: $input) { __typename ...SessionPayload failures { type message } } }  fragment SessionPayload on SetSessionPayload { accessToken refreshToken customerId customerOrderId customerOrderState defaultBranchId expiresIn }";
-    const { username, password } = material;
-    if (typeof username !== "string" || !username || typeof password !== "string" || !password)
-        throw new Error('waitrose: the secret\'s material has no "username" and "password"');
-    const response = await fetch(graphqlUrl, {
-        method: "POST",
-        headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-            // Waitrose's edge answers a request with no user agent with HTTP 520
-            "user-agent": "Waitrose/3.9.1 (Android)",
-        },
-        body: JSON.stringify({
-            query: newSession,
-            variables: { input: { clientId: "ANDROID_APP", password, username } },
-        }),
-    });
-    if (response.status === 401)
-        throw new Error("waitrose: login refused (HTTP 401): check the secret's username and password");
-    if (!response.ok)
-        throw new Error(`waitrose: login answered HTTP ${response.status}`);
-    const answer = (await response.json().catch(() => null));
-    const session = answer?.data?.generateSession;
-    const failure = session?.failures?.[0]?.type;
-    if (failure)
-        throw new Error(`waitrose: login refused (${failure})`);
-    if (!session?.accessToken)
-        throw new Error("waitrose: login returned no accessToken");
-    return { ...material, accessToken: session.accessToken };
+	const graphqlUrl = "https://www.waitrose.com/api/graphql-prod/graph/live";
+	const newSession = "mutation NewSession($input: SessionInput) { generateSession(session: $input) { __typename ...SessionPayload failures { type message } } }  fragment SessionPayload on SetSessionPayload { accessToken refreshToken customerId customerOrderId customerOrderState defaultBranchId expiresIn }";
+	const { username, password } = material;
+	if (typeof username !== "string" || !username || typeof password !== "string" || !password) throw new Error("waitrose: the secret's material has no \"username\" and \"password\"");
+	const response = await fetch(graphqlUrl, {
+		method: "POST",
+		headers: {
+			accept: "application/json",
+			"content-type": "application/json",
+			"user-agent": "Waitrose/3.9.1 (Android)"
+		},
+		body: JSON.stringify({
+			query: newSession,
+			variables: { input: {
+				clientId: "ANDROID_APP",
+				password,
+				username
+			} }
+		})
+	});
+	if (response.status === 401) throw new Error("waitrose: login refused (HTTP 401): check the secret's username and password");
+	if (!response.ok) throw new Error(`waitrose: login answered HTTP ${response.status}`);
+	const session = (await response.json().catch(() => null))?.data?.generateSession;
+	const failure = session?.failures?.[0]?.type;
+	if (failure) throw new Error(`waitrose: login refused (${failure})`);
+	if (!session?.accessToken) throw new Error("waitrose: login returned no accessToken");
+	return {
+		...material,
+		accessToken: session.accessToken
+	};
 }
 ```
 

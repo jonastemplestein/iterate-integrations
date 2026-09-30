@@ -175,10 +175,15 @@ function revive(value: unknown): unknown {
  *  fetches an http one from this computer's network: from the project, only https: and data:. */
 function refuseLocalUrls(value: unknown): void {
   if (!value || typeof value !== "object") return;
-  if ("url" in value && value.url != null && !/^(https|data):/i.test(String(value.url)))
-    throw new Error(
-      `A url must be https: or data: (got ${JSON.stringify(String(value.url).slice(0, 60))}): anything else would be read from the computer lending WhatsApp.`,
-    );
+  if ("url" in value && value.url != null) {
+    // Baileys takes a string or a URL; anything else is refused with them
+    const url =
+      value.url instanceof URL ? value.url.href : typeof value.url === "string" ? value.url : "";
+    if (!/^(https|data):/i.test(url))
+      throw new Error(
+        `A url must be https: or data: (got ${JSON.stringify(url.slice(0, 60))}): anything else would be read from the computer lending WhatsApp.`,
+      );
+  }
   for (const inner of Object.values(value)) refuseLocalUrls(inner);
 }
 
