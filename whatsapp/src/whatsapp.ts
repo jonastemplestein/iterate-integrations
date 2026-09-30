@@ -52,6 +52,13 @@ export type WhatsAppSocket = {
  *  many, the oldest dropped first (and said so). */
 const PENDING_LIMIT = 1_000;
 
+/** The platform's refusal of a key that already names a different event (iterate's
+ *  IDEMPOTENCY_CONFLICT): by its code where the error kept it, else by the platform's one message
+ *  for it (iterate/stream/processor `idempotencyConflictMessage`). */
+const isIdempotencyConflict = (error: unknown): boolean =>
+  (typeof error === "object" && error !== null && "code" in error && error.code === "IDEMPOTENCY_CONFLICT") ||
+  /already names a different event at offset/.test(error instanceof Error ? error.message : String(error));
+
 /** THE LEND. `connect` opens the WhatsApp socket once for the whole process, and a new one each time
  *  Baileys closes one, handing each to `onSocket`. The answer is `iterate provide`'s default export:
  *  called on every connection to the project with that connection's `itx`, it answers the
@@ -75,7 +82,17 @@ export function provideWhatsApp(input: {
       try {
         while (itx && pending.length > 0) {
           const batch = pending.slice(0, 50);
-          await itx.cd(input.logPath).append(...batch);
+          const log = itx.cd(input.logPath);
+          await log.append(...batch).catch(async (error: unknown) => {
+            if (!isIdempotencyConflict(error)) throw error;
+            // A redelivery whose body differs from the event its key already names (an `append`
+            // after a `notify`, or fields WhatsApp filled in later): that message is recorded, and
+            // the refusal takes the whole batch, so the batch goes again one message at a time.
+            for (const event of batch)
+              await log.append(event).catch((single: unknown) => {
+                if (!isIdempotencyConflict(single)) throw single;
+              });
+          });
           pending.splice(0, batch.length);
         }
         return true;

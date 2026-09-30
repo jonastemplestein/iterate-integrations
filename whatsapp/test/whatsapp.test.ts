@@ -4,9 +4,10 @@
 // computer is refused, and messages that could not reach the project wait for its next connection.
 // The same lend through a real deployment is the README's walkthrough.
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import test from "node:test";
 import provideDummy from "../src/dummy.ts";
-import provideWhatsApp, { description } from "../src/whatsapp.ts";
+import provideWhatsApp, { description, provideWhatsApp as lendOver } from "../src/whatsapp.ts";
 import type { Itx, MessageAdded } from "../src/whatsapp.ts";
 
 type Lent = Record<string, (...args: any[]) => Promise<any>>;
@@ -62,7 +63,35 @@ test("the pretend WhatsApp, lent: calls, events, media, refused urls, and messag
   assert.equal((project.events.at(-1)!.payload.message as any).message.conversation, "while you were away");
 });
 
-/** A project whose `cd(path).append` keeps the events, or fails while `failing`. */
+test("a message WhatsApp delivers again with a different body stays one event, and never holds up the next", async () => {
+  const project = pretendProject();
+  const ev = new EventEmitter();
+  const lend = lendOver({
+    logPath: "/integrations/whatsapp",
+    connect: async (onSocket) => onSocket({ ev } as unknown as Parameters<typeof onSocket>[0]),
+    downloadMedia: async () => new Uint8Array(),
+  });
+  await lend({ itx: project.itx });
+  const message = (id: string, text: string) => ({
+    key: { remoteJid: "447700900003@s.whatsapp.net", fromMe: false, id },
+    message: { conversation: text },
+  });
+  ev.emit("messages.upsert", { type: "notify", messages: [message("A", "first")] });
+  await project.settled();
+  // the same message as an `append`, in one batch with a new one: the platform refuses the batch
+  ev.emit("messages.upsert", { type: "append", messages: [message("A", "first"), message("B", "second")] });
+  await project.settled();
+  ev.emit("messages.upsert", { type: "notify", messages: [message("C", "third")] });
+  await project.settled();
+  assert.deepEqual(
+    project.events.map((event) => [event.payload.type, (event.payload.message as any).key.id]),
+    [["notify", "A"], ["append", "B"], ["notify", "C"]],
+  );
+});
+
+/** A project whose `cd(path).append` keeps the events, or fails while `failing`. As the platform
+ *  does, a key it holds dedupes the same body and refuses a different one, the whole call with it,
+ *  by message alone (what reaches `iterate provide`). */
 function pretendProject() {
   const project: {
     events: MessageAdded[];
@@ -80,9 +109,20 @@ function pretendProject() {
       cd: (path: string) => ({
         append: (...events: MessageAdded[]) => {
           project.paths.add(path);
+          const held = (event: MessageAdded) =>
+            project.events.findIndex((kept) => kept.idempotencyKey === event.idempotencyKey);
+          const conflict = events.find(
+            (event) => held(event) >= 0 && JSON.stringify(project.events[held(event)]) !== JSON.stringify(event),
+          );
           const call: Promise<unknown> = project.failing
             ? Promise.reject(new Error("the project is unreachable"))
-            : Promise.resolve(project.events.push(...events));
+            : conflict
+              ? Promise.reject(
+                  new Error(
+                    `idempotency key "${conflict.idempotencyKey}" already names a different event at offset ${held(conflict)}`,
+                  ),
+                )
+              : Promise.resolve(project.events.push(...events.filter((event) => held(event) < 0)));
           project.calls.push(call.catch(() => {}));
           return call;
         },
