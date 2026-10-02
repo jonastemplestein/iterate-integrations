@@ -16,6 +16,10 @@
 // linked device of its own beside the Baileys one), one process kept running with the calls'
 // audio on its stdin and stdout: 16 kHz mono PCM16 both ways, the voice processor's own format.
 //
+// The project can leave a note for a caller's next call in its kv, at
+// `whatsapp-calls/answer/<the caller's digits>`: JSON `{ opening?, brief?, until? }`, what the voice
+// says when it picks up, what the call's agent is told, and the time after which the note is stale.
+//
 // Each call's facts land on /integrations/whatsapp-calls: `whatsapp-calls/call-placed` or
 // `call-received`, `call-answered` (with the voice call's path) and `call-ended` (with what was
 // said).
@@ -58,6 +62,7 @@ type Project = Parameters<typeof startVoiceCall>[0] & {
     append(event: { type: string; payload: Record<string, unknown> }): Promise<unknown>;
   };
   agents: { get(path: string): { message(text: string): Promise<unknown> } };
+  kv: { get(key: string): Promise<string | null> };
 };
 
 type CallInput = {
@@ -113,6 +118,8 @@ type ActiveCall = {
   over: boolean;
   /** Out only: settled when the phone rings, or when it cannot. */
   placed: PromiseWithResolvers<Placed> | null;
+  /** In only: the project's note for this caller is being read; the brief waits for it. */
+  noted: Promise<void> | null;
 };
 
 /** A line of `jeeves-call serve`'s stdout (serve.go). */
@@ -184,7 +191,24 @@ const newCall = (direction: "out" | "in", number: string): ActiveCall => ({
   },
   over: false,
   placed: null,
+  noted: null,
 });
+
+/** The project's note for this caller's next call (kv `whatsapp-calls/answer/<digits>`), onto the
+ *  call: its opening in place of the usual greeting, its brief for the call's agent. A note past
+ *  its `until`, or one that cannot be read, changes nothing. */
+async function takeNote(project: Project, current: ActiveCall): Promise<void> {
+  try {
+    const stored = await project.kv.get(`whatsapp-calls/answer/${current.number}`);
+    if (!stored) return;
+    const note = JSON.parse(stored) as { opening?: unknown; brief?: unknown; until?: unknown };
+    if (typeof note.until === "string" && Date.parse(note.until) < Date.now()) return;
+    if (typeof note.opening === "string" && note.opening.trim()) current.opening = note.opening;
+    if (typeof note.brief === "string" && note.brief.trim()) current.brief = note.brief;
+  } catch (error) {
+    console.error(`whatsapp-calls: the note for +${current.number} was not read: ${String(error)}`);
+  }
+}
 
 const addStats = (current: ActiveCall, ended: VoiceCall<unknown>) => {
   current.metrics.micFramesSent += ended.stats.micFramesSent;
@@ -254,6 +278,7 @@ async function connectVoice(
     },
   });
   current.streamPaths.push(mine.streamPath);
+  await current.noted;
   const callContext = project.cd(mine.streamPath);
   const brief = [
     current.direction === "out"
@@ -413,6 +438,7 @@ async function incoming(event: BridgeEvent): Promise<void> {
   current.callId = callId;
   current.ringingAt = Date.now();
   current.opening = ANSWER_WITH[digits] ?? ANSWER_WITH.default ?? "Hello.";
+  current.noted = takeNote(project, current);
   active = current;
   void record("call-received", { callId, from, answering: true });
   try {
@@ -551,7 +577,7 @@ export default async function provide(connection: { itx: Project }) {
         : null;
     },
     __describe: () => ({
-      instructions: `WhatsApp voice calls from the agents' own number. call({ to, opening, brief, reportTo }) rings a person on WhatsApp: the voice is connected first, then the phone rings (it answers { callId, ringing, streamPath } once it does; the ring gives up after ${String(RING_SECONDS)} s). When they answer they are talking to a voice agent of this project, as in the voice app, in a context of its own (streamPath, under /agents/voice/whatsapp-<their digits>/): it says \`opening\` first, and \`brief\` is all it knows about why you called, so put everything in it. A call FROM one of the same numbers to the agents' number is picked up the same way, once the voice is on the line. One call at a time. hangup() ends it, status() answers the call in progress. Facts land on ${LOG_PATH} (whatsapp-calls/call-placed or call-received, call-answered, call-ended with direction, the transcript and the call's metrics); with reportTo (your own agent path) you are messaged what was said when a call you placed ends. It rings and answers only: ${numbers}.`,
+      instructions: `WhatsApp voice calls from the agents' own number. call({ to, opening, brief, reportTo }) rings a person on WhatsApp: the voice is connected first, then the phone rings (it answers { callId, ringing, streamPath } once it does; the ring gives up after ${String(RING_SECONDS)} s). When they answer they are talking to a voice agent of this project, as in the voice app, in a context of its own (streamPath, under /agents/voice/whatsapp-<their digits>/): it says \`opening\` first, and \`brief\` is all it knows about why you called, so put everything in it. A call FROM one of the same numbers to the agents' number is picked up the same way, once the voice is on the line; to say something particular when a person next rings, leave a note first: await itx.kv.put('whatsapp-calls/answer/<their digits>', JSON.stringify({ opening, brief, until })) (opening: what the voice says on picking up; brief: what the call's agent should know; until: an ISO time after which the note is ignored). One call at a time. hangup() ends it, status() answers the call in progress. Facts land on ${LOG_PATH} (whatsapp-calls/call-placed or call-received, call-answered, call-ended with direction, the transcript and the call's metrics); with reportTo (your own agent path) you are messaged what was said when a call you placed ends. It rings and answers only: ${numbers}.`,
       functions: ["call", "hangup", "status"],
     }),
   };

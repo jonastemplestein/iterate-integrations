@@ -48,7 +48,9 @@ function pretendProject() {
   const project = {
     events: [] as Appended[],
     messages: [] as { to: string; text: string }[],
+    notes: new Map<string, string>(),
     itx: {
+      kv: { get: async (key: string) => project.notes.get(key) ?? null },
       voice: {
         setupVoiceAgent: async ({ streamPath }: { streamPath: string; activation: string }) => {
           setTimeout(
@@ -123,6 +125,43 @@ test("calls in and out: an unknown caller is left ringing, a known one is picked
   assert.match(ended.payload.streamPath, /^\/agents\/voice\/whatsapp-447700900001\//);
   assert.equal(lent.status(), null);
 
+  // a caller the project left a note for: the note's opening is said, its brief is the agent's
+  project.notes.set(
+    "whatsapp-calls/answer/447700900002",
+    JSON.stringify({
+      opening: "At your service, ma'am. It is German school today.",
+      brief: "The form is at /documents/form.pdf.",
+      until: "2999-01-01T00:00:00Z",
+    }),
+  );
+  project.notes.set(
+    "whatsapp-calls/answer/447700900001",
+    JSON.stringify({ opening: "A stale note.", until: "2000-01-01T00:00:00Z" }),
+  );
+  whatsappSays({ event: "incoming", callId: "in-2", number: "447700900002", from: "2@lid" });
+  await until("the noted greeting", () => spoken().length === 2);
+  assert.deepEqual(spoken()[1], [
+    "/agents/voice/whatsapp-447700900002",
+    "At your service, ma'am. It is German school today.",
+  ]);
+  const briefed = project.events.find(
+    (event) =>
+      event.type === "events.iterate.com/agent/context-added" &&
+      event.path.startsWith("/agents/voice/whatsapp-447700900002/"),
+  );
+  assert.match(
+    briefed!.payload.content,
+    /rang you on WhatsApp and you picked up.*The form is at \/documents\/form\.pdf\./,
+  );
+  whatsappSays({ event: "ended", callId: "in-2", reason: "the person hung up", answered: true });
+  await until("the noted call's end", () => recorded("call-ended").length === 2);
+  // a stale note changes nothing
+  whatsappSays({ event: "incoming", callId: "in-3", number: "447700900001", from: "1@lid" });
+  await until("the usual greeting", () => spoken().length === 3);
+  assert.equal(spoken()[2]![1], "At your service, sir.");
+  whatsappSays({ event: "ended", callId: "in-3", reason: "the person hung up", answered: true });
+  await until("the third call's end", () => recorded("call-ended").length === 3);
+
   // a call placed by the project: rung once its voice is on the line, reported to who asked
   await assert.rejects(lent.call({ to: "+44 7700 900009" }), /not a number this lend may ring/);
   const placed = await lent.call({
@@ -132,8 +171,8 @@ test("calls in and out: an unknown caller is left ringing, a known one is picked
   });
   assert.equal(placed.callId, "out-1");
   assert.match(placed.streamPath, /^\/agents\/voice\/whatsapp-447700900002\//);
-  await until("the opening", () => spoken().length === 2);
-  assert.deepEqual(spoken()[1], ["/agents/voice/whatsapp-447700900002", "Good evening, ma'am."]);
+  await until("the opening", () => spoken().length === 4);
+  assert.deepEqual(spoken()[3], ["/agents/voice/whatsapp-447700900002", "Good evening, ma'am."]);
   assert.deepEqual(lent.hangup(), { hungUp: true, callId: "out-1" });
   await until("the report", () => project.messages[0]);
   assert.equal(project.messages[0]!.to, "/agents/family-chief-of-staff");
@@ -144,6 +183,8 @@ test("calls in and out: an unknown caller is left ringing, a known one is picked
   assert.deepEqual(
     recorded("call-ended").map((event) => [event.payload.direction, event.payload.reason]),
     [
+      ["in", "the person hung up"],
+      ["in", "the person hung up"],
       ["in", "the person hung up"],
       ["out", "hung up"],
     ],

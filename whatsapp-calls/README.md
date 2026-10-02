@@ -61,6 +61,23 @@ await itx.whatsappCalls.status(); // the call in progress ({ direction, with, an
 await itx.whatsappCalls.hangup();
 ```
 
+**A note for a caller's next call.** To have the voice say something particular when a person next
+rings, the project leaves a note in its kv first; it replaces the usual greeting, and its `brief`
+is what the call's agent is told:
+
+```js
+await itx.kv.put(
+  "whatsapp-calls/answer/447700900002", // the caller's digits
+  JSON.stringify({
+    opening:
+      "At your service, ma'am. The plumber has moved to Thursday at ten. Shall I put it in the calendar?",
+    brief:
+      "The plumber (Mr Hale, 07700 900123) moved from Wednesday to Thursday 10:00. The family calendar is not updated yet.",
+    until: "2026-10-03T12:00:00Z", // ignored after this
+  }),
+);
+```
+
 One call at a time. Every call leaves its facts on `/integrations/whatsapp-calls`:
 
 | Event                          | When                                                                                                                                                                                              |
