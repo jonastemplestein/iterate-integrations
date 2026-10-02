@@ -3,10 +3,25 @@
 //   iterate provide whatsapp/src/whatsapp.ts --project <slug>
 //
 // Baileys (https://baileys.wiki) links this computer to your WhatsApp as a linked device, the way
-// WhatsApp Web does, from your own IP. Every message in your chats lands on the project's
-// `/integrations/whatsapp` as a `whatsapp/message-added` event, and the project calls Baileys'
-// own socket API as `itx.whatsapp`: `sendMessage(jid, content, options)`, `groupMetadata(jid)`,
-// `onWhatsApp(...phones)`, and the rest, plus `downloadMedia(message)`.
+// WhatsApp Web does, from your own IP. The lend is as thin as it can be, so Baileys' own
+// documentation is the lend's:
+//   - CALLS: every function of Baileys' socket, under its own name, as `itx.whatsapp.<name>(…)`:
+//     `sendMessage(jid, content, options)`, `groupMetadata(jid)`, `updateProfilePicture(jid, { url })`
+//     and the rest. Three are added for what is not a socket function: `downloadMedia(message)`,
+//     `user()` (the linked account, Baileys' `sock.user`), and `getPNForLID(lid)` / `getLIDForPN(pn)`
+//     (Baileys' `sock.signalRepository.lidMapping`).
+//   - EVENTS: every event the socket emits lands on the project as `whatsapp/<Baileys' event name>`
+//     (`whatsapp/messages.upsert`, `whatsapp/messages.update`, `whatsapp/group-participants.update`,
+//     `whatsapp/presence.update`, `whatsapp/call`, …) with `payload.data` Baileys' own data. A
+//     `messages.upsert` of several messages lands as one event a message (`data.messages` holds
+//     the one), so a message has an event, and an offset, of its own. Only what must stay on this
+//     computer is held back (`eventPayloads`): credentials, the QR code that links a device, and
+//     the bulk of a history sync.
+//   - TWO COPIES: every event lands on the account's stream, `/integrations/whatsapp`, the whole
+//     account in order; and what belongs to one chat lands again on that chat's own stream,
+//     `/integrations/whatsapp/chats/<jid>` (`chatParts`), the conversation alone.
+import { randomUUID } from "node:crypto";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import makeWASocket, {
   BufferJSON,
@@ -22,19 +37,20 @@ import pino from "pino";
 import qrcode from "qrcode-terminal";
 
 export const description =
-  "My WhatsApp, as Baileys' socket (https://baileys.wiki): sendMessage(jid, content, options), groupMetadata(jid), onWhatsApp(...phones), downloadMedia(message) and the rest; call __describe() first. Messages land on /integrations/whatsapp.";
+  "My WhatsApp, as Baileys' socket (https://baileys.wiki): every function of it under its own name (sendMessage(jid, content, options), groupMetadata(jid), onWhatsApp(...phones), …) plus downloadMedia(message), user() and getPNForLID(lid); call __describe() first. Every event of the socket lands on the account's stream (/integrations/whatsapp).";
 
 /** The project, as `iterate provide` hands it over: the part this file uses. */
 export type Itx = {
-  cd(path: string): { append(...events: MessageAdded[]): Promise<unknown> };
+  cd(path: string): { append(...events: WhatsAppEvent[]): Promise<unknown> };
 };
 
-/** One message of a chat, either way (`message.key.fromMe`): Baileys' `messages.upsert`, one event
- *  per message. `type` is Baileys' too: `notify` for a message as it arrives, `append` for one
- *  delivered late (sent while this computer was offline, or sent from here). */
-export type MessageAdded = {
-  type: "whatsapp/message-added";
-  payload: { type: BaileysEventMap["messages.upsert"]["type"]; message: unknown };
+/** An event of Baileys' socket as it lands: `whatsapp/<Baileys' event name>`, Baileys' data under
+ *  `data` (a long list in parts). A message's key is the message's, so one WhatsApp delivers twice
+ *  (a reconnect, an `append` after a `notify`) is one event; any other event's key is its own, so
+ *  one that waited and is appended again lands once. */
+export type WhatsAppEvent = {
+  type: `whatsapp/${string}`;
+  payload: { event: string; data: unknown; part?: { from: number; of: number } };
   idempotencyKey: string;
 };
 
@@ -45,8 +61,120 @@ export type WhatsAppSocket = {
       event: "messages.upsert",
       listener: (upsert: BaileysEventMap["messages.upsert"]) => void,
     ): unknown;
+    /** Baileys' one hook for every event, in the batches it emits them (absent on a pretend socket). */
+    process?(handler: (events: Partial<BaileysEventMap>) => void | Promise<void>): unknown;
   };
 };
+
+/** Events never appended, by Baileys' name: WHATSAPP_SKIP_EVENTS, comma-separated
+ *  (`presence.update,chats.update`), for an account whose volume of one kind is not worth having. */
+const SKIPPED_EVENTS = new Set(
+  (process.env.WHATSAPP_SKIP_EVENTS || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean),
+);
+/** An event's list is appended this many items at a time: a first link's contacts and chats are
+ *  thousands of rows. */
+const EVENT_CHUNK = 50;
+
+/** What of a Baileys event leaves this computer, as the payloads to append (a long list is several):
+ *  everything, except
+ *   - `creds.update`: the account's keys;
+ *   - `connection.update`'s `qr`: whoever holds it links a device to the account;
+ *   - `messaging-history.set`'s rows: a first link's whole history (its counts are kept), which
+ *     would also land every old message as if it had just arrived. */
+export function eventPayloads(name: string, data: unknown): WhatsAppEvent["payload"][] {
+  if (name === "creds.update" || SKIPPED_EVENTS.has(name)) return [];
+  if (name === "connection.update") {
+    const { qr, lastDisconnect, ...rest } = data as BaileysEventMap["connection.update"];
+    const error = lastDisconnect?.error as
+      | { message?: string; output?: { statusCode?: number } }
+      | undefined;
+    return [
+      {
+        event: name,
+        data: json({
+          ...rest,
+          ...(qr && { qr: "(shown on the computer lending WhatsApp)" }),
+          ...(lastDisconnect && {
+            lastDisconnect: {
+              date: lastDisconnect.date,
+              statusCode: error?.output?.statusCode,
+              message: error?.message,
+            },
+          }),
+        }),
+      },
+    ];
+  }
+  if (name === "messaging-history.set") {
+    const { chats, contacts, messages, ...rest } = data as BaileysEventMap["messaging-history.set"];
+    return [
+      {
+        event: name,
+        data: json({
+          ...rest,
+          chats: chats?.length ?? 0,
+          contacts: contacts?.length ?? 0,
+          messages: messages?.length ?? 0,
+        }),
+      },
+    ];
+  }
+  if (!Array.isArray(data) || data.length <= EVENT_CHUNK)
+    return [{ event: name, data: json(data) }];
+  const payloads: WhatsAppEvent["payload"][] = [];
+  for (let start = 0; start < data.length; start += EVENT_CHUNK)
+    payloads.push({
+      event: name,
+      data: json(data.slice(start, start + EVENT_CHUNK)),
+      part: { from: start, of: data.length },
+    });
+  return payloads;
+}
+
+/** The events whose rows each name a message by its key, a chat or group by its id. */
+const ROWS_BY_KEY = new Set([
+  "messages.update",
+  "messages.reaction",
+  "message-receipt.update",
+  "messages.media-update",
+]);
+const ROWS_BY_ID = new Set(["chats.upsert", "chats.update", "groups.upsert", "groups.update"]);
+const ONE_BY_ID = new Set([
+  "presence.update",
+  "group-participants.update",
+  "group.join-request",
+  "group.member-tag.update",
+]);
+
+/** The part of a Baileys event that belongs to each chat, by the chat's jid, in the event's own
+ *  shape (a list stays a list): what lands again on the chat's own stream. Empty for an event
+ *  that is the account's alone (the connection, contacts, the blocklist, settings). */
+export function chatParts(name: string, data: unknown): Map<string, unknown> {
+  const rows = new Map<string, unknown[]>();
+  const add = (chat: unknown, row: unknown) => {
+    if (typeof chat !== "string" || !chat.includes("@")) return;
+    rows.set(chat, [...(rows.get(chat) ?? []), row]);
+  };
+  if (Array.isArray(data)) {
+    for (const row of data as Record<string, any>[]) {
+      if (ROWS_BY_KEY.has(name)) add(row?.key?.remoteJid, row);
+      else if (ROWS_BY_ID.has(name)) add(row?.id, row);
+      else if (name === "call") add(row?.chatId ?? row?.from, row);
+      else if (name === "chats.delete") add(row, row);
+    }
+    return rows;
+  }
+  const one = (data ?? {}) as Record<string, any>;
+  if (ONE_BY_ID.has(name) && typeof one.id === "string") return new Map([[one.id, one]]);
+  if (name !== "messages.delete") return new Map();
+  // `{ keys }`: the deleted messages; `{ jid, all: true }`: a chat cleared
+  if (typeof one.jid === "string") return new Map([[one.jid, one]]);
+  for (const key of (one.keys ?? []) as { remoteJid?: string }[]) add(key?.remoteJid, key);
+  return new Map([...rows].map(([chat, keys]) => [chat, { keys }]));
+}
 
 /** Messages that could not reach the project yet wait here for its next connection, at most this
  *  many, the oldest dropped first (and said so). */
@@ -78,52 +206,119 @@ export function provideWhatsApp(input: {
   let itx: Itx | undefined;
   let socket: WhatsAppSocket | undefined;
   let connected: Promise<void> | undefined;
-  const pending: MessageAdded[] = [];
+  /** What waits to be appended, by the stream it is for, each in its own order. */
+  const pending = new Map<string, WhatsAppEvent[]>();
+  const waiting = () => [...pending.values()].reduce((count, events) => count + events.length, 0);
+  const queue = (path: string, event: WhatsAppEvent) => {
+    const events = pending.get(path) ?? [];
+    events.push(event);
+    if (events.length > PENDING_LIMIT) {
+      const dropped = events.splice(0, events.length - PENDING_LIMIT);
+      console.error(
+        `WhatsApp: dropped ${dropped.length} event(s) of ${path} the project never took`,
+      );
+    }
+    pending.set(path, events);
+  };
   let flushing: Promise<void> | undefined;
-  /** Append what waits, in order, over the newest connection, one flush at a time; a failure leaves
-   *  it waiting for the next connection. */
+  /** Append what waits, each stream's in order, over the newest connection, one flush at a time; a
+   *  failure leaves it waiting for the next connection. */
   const flush = (): Promise<void> =>
     (flushing ??= (async () => {
       try {
-        while (itx && pending.length > 0) {
-          const batch = pending.slice(0, 50);
-          const log = itx.cd(input.logPath);
-          await log.append(...batch).catch(async (error: unknown) => {
-            if (!isIdempotencyConflict(error)) throw error;
-            // A redelivery whose body differs from the event its key already names (an `append`
-            // after a `notify`, or fields WhatsApp filled in later): that message is recorded, and
-            // the refusal takes the whole batch, so the batch goes again one message at a time.
-            for (const event of batch)
-              await log.append(event).catch((single: unknown) => {
-                if (!isIdempotencyConflict(single)) throw single;
-              });
-          });
-          pending.splice(0, batch.length);
+        while (itx && waiting() > 0) {
+          for (const [path, events] of pending) {
+            const batch = events.slice(0, 50);
+            const log = itx.cd(path);
+            await log.append(...batch).catch(async (error: unknown) => {
+              if (!isIdempotencyConflict(error)) throw error;
+              // A redelivery whose body differs from the event its key already names (an `append`
+              // after a `notify`, or fields WhatsApp filled in later): that message is recorded, and
+              // the refusal takes the whole batch, so the batch goes again one event at a time.
+              for (const event of batch)
+                await log.append(event).catch((single: unknown) => {
+                  if (!isIdempotencyConflict(single)) throw single;
+                });
+            });
+            events.splice(0, batch.length);
+            if (events.length === 0) pending.delete(path);
+          }
         }
         return true;
       } catch (error) {
         console.error(
-          `WhatsApp: ${pending.length} message(s) wait for the project's next connection (${error instanceof Error ? error.message : String(error)})`,
+          `WhatsApp: ${waiting()} event(s) wait for the project's next connection (${error instanceof Error ? error.message : String(error)})`,
         );
         return false;
       }
     })().then((appended) => {
       flushing = undefined;
-      if (appended && pending.length > 0) void flush(); // arrived as it finished
+      if (appended && waiting() > 0) void flush(); // arrived as it finished
     }));
+  /** A chat's own stream. A person's chat goes by their phone number's jid wherever WhatsApp has
+   *  told this account the number behind a `…@lid` (the message's own `remoteJidAlt`, or Baileys'
+   *  LID mapping), so the conversation is one stream under either id; else by the jid as it came. */
+  const numbers = new Map<string, string>();
+  const chatStream = async (jid: string, alt?: string | null): Promise<string> => {
+    const bare = (id: string) => id.replace(/:\d+@/, "@");
+    let chat = bare(jid);
+    if (chat.endsWith("@lid")) {
+      const known =
+        (alt?.endsWith("@s.whatsapp.net") ? alt : undefined) ??
+        numbers.get(chat) ??
+        (await (
+          socket as unknown as {
+            signalRepository?: {
+              lidMapping?: { getPNForLID(lid: string): Promise<string | null> };
+            };
+          }
+        ).signalRepository?.lidMapping
+          ?.getPNForLID(chat)
+          .catch(() => null));
+      if (known) numbers.set(chat, (chat = bare(known)));
+    }
+    return `${input.logPath}/chats/${chat}`;
+  };
   const onSocket = (next: WhatsAppSocket) => {
     socket = next;
-    next.ev.on("messages.upsert", ({ type, messages }) => {
-      for (const message of messages)
-        pending.push({
-          type: "whatsapp/message-added",
-          payload: { type, message: json(message) },
-          // the same message delivered twice (a reconnect, an `append` after a `notify`) is one event
-          idempotencyKey: `whatsapp/message-added:${message.key.remoteJid}:${message.key.id}`,
-        });
-      if (pending.length > PENDING_LIMIT) {
-        const dropped = pending.splice(0, pending.length - PENDING_LIMIT);
-        console.error(`WhatsApp: dropped ${dropped.length} message(s) the project never took`);
+    // a message: one event of its own, on the account's stream and on its chat's
+    next.ev.on("messages.upsert", async ({ type, messages }) => {
+      for (const message of messages) {
+        const event: WhatsAppEvent = {
+          type: "whatsapp/messages.upsert",
+          payload: { event: "messages.upsert", data: { type, messages: [json(message)] } },
+          idempotencyKey: `whatsapp/messages.upsert:${message.key.remoteJid}:${message.key.id}`,
+        };
+        queue(input.logPath, event);
+        if (message.key.remoteJid)
+          queue(
+            await chatStream(
+              message.key.remoteJid,
+              (message.key as { remoteJidAlt?: string }).remoteJidAlt,
+            ),
+            event,
+          );
+      }
+      void flush();
+    });
+    // every other event of the socket, as Baileys names it
+    next.ev.process?.(async (events) => {
+      for (const [name, data] of Object.entries(events)) {
+        if (name === "messages.upsert") continue;
+        for (const payload of eventPayloads(name, data))
+          queue(input.logPath, {
+            type: `whatsapp/${name}`,
+            payload,
+            idempotencyKey: `whatsapp/${name}:${randomUUID()}`,
+          });
+        if (eventPayloads(name, data).length === 0) continue; // held back, or skipped
+        for (const [chat, part] of chatParts(name, data))
+          for (const payload of eventPayloads(name, part))
+            queue(await chatStream(chat), {
+              type: `whatsapp/${name}`,
+              payload,
+              idempotencyKey: `whatsapp/${name}:${randomUUID()}`,
+            });
       }
       void flush();
     });
@@ -155,11 +350,31 @@ export function provideWhatsApp(input: {
         };
     lent.downloadMedia = async (message: unknown) =>
       await input.downloadMedia(revive(message) as WAMessage, socket!);
+    // what Baileys keeps as a property of the socket, not a function of it
+    lent.user = async () => json((current() as unknown as { user?: unknown }).user ?? null);
+    const lidMapping = () => {
+      const mapping = (
+        current() as unknown as {
+          signalRepository?: {
+            lidMapping?: Record<
+              "getPNForLID" | "getLIDForPN",
+              (id: string) => Promise<string | null>
+            >;
+          };
+        }
+      ).signalRepository?.lidMapping;
+      if (!mapping) throw new Error("This WhatsApp socket has no LID mapping.");
+      return mapping;
+    };
+    lent.getPNForLID = async (lid: string) => await lidMapping().getPNForLID(lid);
+    lent.getLIDForPN = async (pn: string) => await lidMapping().getLIDForPN(pn);
     lent.__describe = () => ({
       instructions:
-        "My WhatsApp through Baileys (https://baileys.wiki), a linked device on my own computer. Every function is Baileys' socket function of the same name, e.g. sendMessage(jid, { text }), sendMessage(jid, { image: { url }, caption }), sendMessage(jid, { react: { text, key } }), groupMetadata(jid), onWhatsApp(...phones). A jid is <digits>@s.whatsapp.net (a person), …@g.us (a group) or …@lid. Bytes cross as { type: 'Buffer', data: <base64> }. Media: pass { url } — an https: URL (an itx.files URL works) or a data: URL; nothing else. downloadMedia(message) answers the bytes of a received message's media (store them with itx.files). Messages land on " +
+        "My WhatsApp through Baileys (https://baileys.wiki), a linked device on my own computer. Every function is Baileys' socket function of the same name, so Baileys' documentation is this API's, e.g. sendMessage(jid, { text }), sendMessage(jid, { image: { url }, caption }), sendMessage(jid, { react: { text, key } }), groupMetadata(jid), onWhatsApp(...phones), updateProfilePicture(jid, { url }). A jid is <digits>@s.whatsapp.net (a person), …@g.us (a group) or …@lid. Bytes cross as { type: 'Buffer', data: <base64> }. Media: pass { url } — an https: URL (an itx.files URL works) or a data: URL; nothing else. Added to the socket's own: downloadMedia(message) answers the bytes of a received message's media (store them with itx.files); user() answers the linked account (Baileys' sock.user); getPNForLID(lid) and getLIDForPN(pn) translate between a …@lid and a phone number's jid. Every event of the socket lands on " +
         input.logPath +
-        " as whatsapp/message-added. Only write to chats that already exist unless told otherwise: WhatsApp restricts accounts that start many new chats.",
+        " as whatsapp/<Baileys' event name> with Baileys' data in payload.data: whatsapp/messages.upsert (one event a message: payload.data.messages[0], payload.data.type), whatsapp/messages.update (delivery, read, edits), whatsapp/message-receipt.update, whatsapp/group-participants.update, whatsapp/presence.update, whatsapp/call, …; and what belongs to one chat lands again on " +
+        input.logPath +
+        "/chats/<the chat's jid>, the conversation alone. Only write to chats that already exist unless told otherwise: WhatsApp restricts accounts that start many new chats.",
       functions: Object.keys(lent).sort(),
     });
     return lent;
@@ -223,10 +438,30 @@ async function connectBaileys(onSocket: (socket: WASocket) => void): Promise<voi
         if (message.key.id && message.message) recent.set(message.key.id, message.message);
       while (recent.size > 1_000) recent.delete(recent.keys().next().value!);
     });
+    // With WHATSAPP_PAIRING_NUMBER (the account's number, digits with country code), the link is an
+    // 8-character code typed into the phone, not a QR code scanned off this screen: once per socket,
+    // when WhatsApp is ready to link (its first QR).
+    const pairingNumber = (process.env.WHATSAPP_PAIRING_NUMBER || "").replace(/\D/g, "");
+    let pairingRequested = false;
     socket.ev.on("connection.update", ({ qr, connection, lastDisconnect }) => {
-      if (qr) {
+      if (qr && pairingNumber) {
+        if (!pairingRequested) {
+          pairingRequested = true;
+          void socket.requestPairingCode(pairingNumber).then(
+            (code) =>
+              console.error(
+                `PAIRING CODE ${code.slice(0, 4)}-${code.slice(4)} for +${pairingNumber}: WhatsApp → Settings → Linked devices → Link a device → Link with phone number instead`,
+              ),
+            (error: unknown) =>
+              console.error(`WhatsApp: the pairing code request failed: ${String(error)}`),
+          );
+        }
+      } else if (qr) {
         console.error("Link this computer: WhatsApp → Settings → Linked devices → Link a device");
         qrcode.generate(qr, { small: true }, (code) => console.error(code));
+        // WHATSAPP_QR_FILE: the QR's own text, written each time WhatsApp issues a new one, for
+        // something that renders it better than a terminal does
+        if (process.env.WHATSAPP_QR_FILE) writeFileSync(process.env.WHATSAPP_QR_FILE, qr);
       }
       if (connection === "open") console.error(`WhatsApp: connected as ${socket.user?.id}`);
       if (connection !== "close") return;
@@ -250,8 +485,13 @@ async function connectBaileys(onSocket: (socket: WASocket) => void): Promise<voi
   open();
 }
 
+/** Where this account's messages land in the project: WHATSAPP_LOG_PATH for a second account lent
+ *  beside the first (`iterate provide whatsapp.ts --name whatsappPersonal` with its own
+ *  WHATSAPP_AUTH_FOLDER), each on a stream of its own. */
+const LOG_PATH = process.env.WHATSAPP_LOG_PATH || "/integrations/whatsapp";
+
 export default provideWhatsApp({
-  logPath: "/integrations/whatsapp",
+  logPath: LOG_PATH,
   connect: connectBaileys as (onSocket: (socket: WhatsAppSocket) => void) => Promise<void>,
   downloadMedia: async (message, socket) =>
     await downloadMediaMessage(

@@ -6,14 +6,23 @@ links this computer to your account as a linked device, as WhatsApp Web does, an
 the project as `itx.whatsapp`. Nothing runs on iterate that is not already there
 ([why your own computer](#why-your-own-computer)).
 
-- **Every message** in your chats, either way, lands on the project's `/integrations/whatsapp` as a
-  `whatsapp/message-added` event: `{ type: "notify" | "append", message }`, `message` Baileys' own
-  (`key.remoteJid`, `key.fromMe`, `message.conversation`, `message.imageMessage`, …), bytes as
-  `{ type: "Buffer", data: <base64> }`. The same message twice is one event.
+- **Every event of the socket** lands on the project's `/integrations/whatsapp` under Baileys' own
+  name, `whatsapp/<event>`: `whatsapp/messages.upsert`, `whatsapp/messages.update`,
+  `whatsapp/messages.reaction`, `whatsapp/groups.update`, … with `payload.data` the event's own data
+  ([Baileys' event map](https://baileys.wiki/api-reference/type-aliases/BaileysEventMap)), bytes as
+  `{ type: "Buffer", data: <base64> }`. A message is one `whatsapp/messages.upsert` of its own
+  (`data.messages[0]`: `key.remoteJid`, `key.fromMe`, `message.conversation`, …), and the same
+  message twice is one event. `WHATSAPP_SKIP_EVENTS=presence.update,chats.update` leaves kinds out.
+- **Each chat has a stream of its own**: an event that belongs to one chat is appended again at
+  `/integrations/whatsapp/chats/<jid>` (a person by their phone number's jid, a group by its
+  `…@g.us`), so a conversation is read from one place.
+- **A second account** is the same file run again with its own `WHATSAPP_AUTH_FOLDER`,
+  `WHATSAPP_LOG_PATH=/integrations/whatsapp-personal` and `--name whatsappPersonal`.
 - **Baileys' own socket API** is `itx.whatsapp`: `sendMessage(jid, content, options)`,
   `groupMetadata(jid)`, `onWhatsApp(...phones)`, `readMessages(keys)` and the rest, as documented at
   [baileys.wiki](https://baileys.wiki), plus `downloadMedia(message)` for a received message's
-  media and `__describe()` for an agent. The whole socket, `logout()` included: share only with a
+  media, `user()` (the linked account), `getPNForLID(lid)` and `getLIDForPN(pn)`, and `__describe()`
+  for an agent. The whole socket, `logout()` included: share only with a
   project you trust.
 - **Files**: send one with its URL, `sendMessage(jid, { image: { url: await itx.files.get(path).url() } })`
   (only `https:` and `data:` URLs: Baileys would read anything else from this computer), and keep a
