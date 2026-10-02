@@ -97,6 +97,12 @@ gaps in an answer and the deepest queue.
   devices, the phone included, and stops the others ringing once one picks up. This lend picks up
   when the voice is on the line, a few seconds in; the phone rings until then. A call from anyone
   the lend does not answer is left ringing on the other devices.
+- **A fresh device for every call.** `jeeves-call serve` is started again after each call, so a
+  call is always carried by a process that has carried none: the one call that carried no audio in
+  either direction was the third call of a long-running one.
+- **A silent call is rung again.** A call that was accepted and carries no audio within six
+  seconds is ended and the person is rung again, once (`whatsapp-calls/call-retried`); a call they
+  placed becomes a call back that opens with an apology. `LOG_LEVEL=debug` logs the media in detail.
 - **A voice connection that drops mid-call is replaced** (twice at most): the new one is told what
   was said and apologises. The call ends when the voice's agent hangs up, the person does, or
   nobody has spoken for a minute.

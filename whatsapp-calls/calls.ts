@@ -20,6 +20,10 @@
 // `whatsapp-calls/answer/<the caller's digits>`: JSON `{ opening?, brief?, until? }`, what the voice
 // says when it picks up, what the call's agent is told, and the time after which the note is stale.
 //
+// `jeeves-call serve` is started afresh after every call: a call is carried by a device that has
+// carried none before. A call that was accepted and carries no audio is ended by it within a few
+// seconds, and the person is rung again, once, by a fresh one.
+//
 // Each call's facts land on /integrations/whatsapp-calls: `whatsapp-calls/call-placed` or
 // `call-received`, `call-answered` (with the voice call's path) and `call-ended` (with what was
 // said).
@@ -120,6 +124,8 @@ type ActiveCall = {
   placed: PromiseWithResolvers<Placed> | null;
   /** In only: the project's note for this caller is being read; the brief waits for it. */
   noted: Promise<void> | null;
+  /** The call was accepted and carried no audio, and the person was rung again. */
+  redialled: boolean;
 };
 
 /** A line of `jeeves-call serve`'s stdout (serve.go). */
@@ -138,11 +144,23 @@ type BridgeEvent = {
 
 let itx: Project | undefined;
 let active: ActiveCall | null = null;
+/** serve.go's reason for ending an accepted call that carried no audio. */
+const NO_AUDIO = "answered, but no audio flowed";
+/** How long a call waits for the device to be connected before it is given up. */
+const BRIDGE_READY_TIMEOUT_MS = 20_000;
+/** After a call's end, how long the device is left to send its hang-up before it is replaced
+ *  (WHATSAPP_CALLS_SETTLE_MS: a test has no hang-up to wait for). */
+const BRIDGE_SETTLE_MS = Number(process.env.WHATSAPP_CALLS_SETTLE_MS ?? 2_000);
+
 let bridge: ChildProcessWithoutNullStreams | null = null;
 /** `jeeves-call serve` is kept running from the first connection on. */
 let bridgeStarted = false;
 /** The linked device is connected: calls can be placed. */
 let bridgeReady = false;
+/** Whoever waits for the device to be connected. */
+let bridgeWaiters: (() => void)[] = [];
+/** The device is being replaced on purpose: its exit is not a call's end. */
+let replacing = false;
 
 /** The voice ended the call itself (its agent hung up, or nobody spoke for a minute): the WhatsApp
  *  call ends too. Any other end is the voice's connection failing, and the call gets a new one. */
@@ -164,6 +182,35 @@ const record = (type: string, payload: Record<string, unknown>) =>
 const tell = (line: Record<string, unknown>) => {
   if (bridge?.stdin.writable) bridge.stdin.write(`${JSON.stringify(line)}\n`);
 };
+
+/** Settles once the device is connected; refuses when it has not connected in time. */
+function bridgeConnected(): Promise<void> {
+  if (bridgeReady) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const connected = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      bridgeWaiters = bridgeWaiters.filter((waiter) => waiter !== connected);
+      reject(new Error("The WhatsApp call device did not connect in time: try again."));
+    }, BRIDGE_READY_TIMEOUT_MS);
+    bridgeWaiters.push(connected);
+  });
+}
+
+/** A fresh device in place of the one that just carried a call: no call is offered to the old
+ *  one from now, and it leaves once its hang-up has had time to go out (its exit starts the new). */
+function replaceBridge(): void {
+  const old = bridge;
+  if (!old) return;
+  bridgeReady = false;
+  setTimeout(() => {
+    if (bridge !== old) return;
+    replacing = true;
+    old.stdin.end(); // serve.go leaves when its stdin closes
+  }, BRIDGE_SETTLE_MS);
+}
 
 const newCall = (direction: "out" | "in", number: string): ActiveCall => ({
   direction,
@@ -192,6 +239,7 @@ const newCall = (direction: "out" | "in", number: string): ActiveCall => ({
   over: false,
   placed: null,
   noted: null,
+  redialled: false,
 });
 
 /** The project's note for this caller's next call (kv `whatsapp-calls/answer/<digits>`), onto the
@@ -357,6 +405,7 @@ async function finished(current: ActiveCall, reason: string, answered: boolean):
     streamPath: current.streamPaths.at(-1) ?? null,
     streamPaths: current.streamPaths,
     reportTo: current.reportTo ?? null,
+    ...(current.redialled && { redialled: true }),
     transcript,
     metrics: current.metrics,
   });
@@ -395,7 +444,6 @@ async function call(input: CallInput): Promise<Placed> {
     );
   if (active)
     throw new Error(`A call is already in progress (with +${active.number}): one call at a time.`);
-  if (!bridgeReady) throw new Error("The WhatsApp call device is not connected yet: try again.");
 
   const current = newCall("out", digits);
   current.opening = input.opening;
@@ -414,9 +462,62 @@ async function call(input: CallInput): Promise<Placed> {
     throw error;
   }
   // 2. the phone
+  try {
+    await bridgeConnected();
+  } catch (error) {
+    await finished(current, "the call device is not connected", false);
+    throw error;
+  }
   current.placed = Promise.withResolvers<Placed>();
   tell({ call: `+${digits}`, ring: RING_SECONDS });
   return await current.placed.promise;
+}
+
+/** The call was accepted and carried no audio: the person is listening to silence. They are rung
+ *  again, once, by a fresh device; the voice stays on the line and has said nothing yet. A call
+ *  they placed becomes a call back. */
+async function redial(current: ActiveCall): Promise<void> {
+  current.redialled = true;
+  console.error(`whatsapp-calls: the call with +${current.number} carried no audio; ringing again`);
+  void record("call-retried", {
+    callId: current.callId,
+    direction: current.direction,
+    ...(current.direction === "out"
+      ? { to: `+${current.number}` }
+      : { from: `+${current.number}` }),
+    reason: NO_AUDIO,
+  });
+  if (current.direction === "in") {
+    current.direction = "out";
+    current.opening = `I do apologise, the line failed just now. ${current.opening ?? ""}`.trim();
+    const streamPath = current.streamPaths.at(-1);
+    if (streamPath && itx)
+      void itx
+        .cd(streamPath)
+        .append({
+          type: "events.iterate.com/agent/context-added",
+          payload: {
+            role: "user",
+            actor: { type: "user" },
+            content:
+              "[call brief] The line carried no sound when you picked up, so you hung up and rang them straight back: this is that call.",
+            llmRequestPolicy: { behaviour: "dont-trigger-request" },
+          },
+        })
+        .catch(() => undefined);
+  }
+  current.callId = "";
+  current.ringingAt = null;
+  current.answeredAt = null;
+  replaceBridge();
+  try {
+    await bridgeConnected();
+  } catch {
+    await finished(current, `${NO_AUDIO}, and the call device did not come back`, false);
+    return;
+  }
+  if (current.over) return;
+  tell({ call: `+${current.number}`, ring: RING_SECONDS });
 }
 
 /** Someone is ringing the account. A call from a number this lend answers gets a voice call of
@@ -468,6 +569,7 @@ function onBridgeEvent(event: BridgeEvent): void {
   if (event.event === "ready") {
     bridgeReady = true;
     console.error("whatsapp-calls: the call device is connected");
+    for (const connected of bridgeWaiters.splice(0)) connected();
     return;
   }
   if (event.event === "incoming") {
@@ -522,11 +624,18 @@ function onBridgeEvent(event: BridgeEvent): void {
   }
   if (event.event === "ended") {
     current.metrics.bridge = event.stats ?? null;
+    if (event.reason === NO_AUDIO && !current.redialled) {
+      void redial(current);
+      return;
+    }
+    // the next call is carried by a device that has carried none
+    replaceBridge();
     void finished(current, event.reason ?? "ended", Boolean(event.answered));
   }
 }
 
-/** `jeeves-call serve`, kept running: started again a few seconds after it exits. */
+/** `jeeves-call serve`, kept running: started again at once when it was replaced on purpose, and
+ *  a few seconds after it exits by itself. */
 function startBridge(): void {
   const child = spawn(BRIDGE, ["serve"], { stdio: ["pipe", "pipe", "pipe"] });
   bridge = child;
@@ -543,6 +652,11 @@ function startBridge(): void {
   child.on("exit", (code) => {
     if (bridge === child) bridge = null;
     bridgeReady = false;
+    if (replacing) {
+      replacing = false;
+      startBridge();
+      return;
+    }
     console.error(`whatsapp-calls: jeeves-call exited (${String(code)}); starting it again in 5 s`);
     if (active)
       void finished(active, `the call process ended (${String(code)})`, active.answeredAt !== null);

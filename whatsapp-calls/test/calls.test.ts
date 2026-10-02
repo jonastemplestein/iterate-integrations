@@ -1,7 +1,8 @@
 // calls.test.ts — the lend over a pretend `jeeves-call serve` (fake-bridge.mjs) and a pretend
 // project: a call from a number the lend does not answer is left ringing; a call from one it
 // answers gets its voice call first and is picked up only then, the voice saying that caller's
-// greeting; a placed call rings once its voice is on the line and reports to the agent that asked.
+// greeting; a placed call rings once its voice is on the line and reports to the agent that asked;
+// a call that is accepted and carries no audio is rung again, once, with its opening said once.
 // A real call needs a phone: the README's walkthrough.
 import assert from "node:assert/strict";
 import { appendFileSync, mkdtempSync, readFileSync, existsSync } from "node:fs";
@@ -18,6 +19,7 @@ process.env.JEEVES_CALL_BIN = join(import.meta.dirname, "fake-bridge.mjs");
 process.env.FAKE_BRIDGE_CONTROL = control;
 process.env.FAKE_BRIDGE_LOG = log;
 process.env.WHATSAPP_CALLS_ALLOWED = "447700900001,+44 7700 900002";
+process.env.WHATSAPP_CALLS_SETTLE_MS = "0";
 process.env.WHATSAPP_CALLS_ANSWER_WITH = JSON.stringify({
   "447700900001": "At your service, sir.",
   "447700900002": "At your service, ma'am.",
@@ -189,4 +191,19 @@ test("calls in and out: an unknown caller is left ringing, a known one is picked
       ["out", "hung up"],
     ],
   );
+
+  // a call that is accepted and carries no audio: rung again by a fresh device, said to once
+  whatsappSays({ fake: "no-audio" });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const again = await lent.call({ to: "+44 7700 900001", opening: "Good evening, sir." });
+  assert.equal(again.callId, "out-2");
+  await until("the second ring's answer", () => spoken().length === 5);
+  assert.deepEqual(spoken()[4], ["/agents/voice/whatsapp-447700900001", "Good evening, sir."]);
+  assert.equal(recorded("call-retried").length, 1);
+  assert.equal(lent.status()?.callId, "out-3");
+  assert.equal(bridgeHeard().filter((line) => line.call === "+447700900001").length, 2);
+  lent.hangup();
+  const last = await until("the retried call's end", () => recorded("call-ended")[4]);
+  assert.equal(last.payload.redialled, true);
+  assert.equal(last.payload.answered, true);
 });

@@ -21,6 +21,9 @@
 //	        {"event":"mic","pcm":"…"}                         what the person says, one 60 ms frame a line
 //	        {"event":"ended","callId":"…","reason":"…","answered":true,"stats":{…}}
 //
+// A call that was accepted (by the person, or by this side picking up) and carries no audio within
+// a few seconds is ended with the reason "answered, but no audio flowed": the parent rings again.
+//
 // Closing stdin ends the call in progress and the process: a parent that died leaves no call up.
 package main
 
@@ -52,6 +55,13 @@ import (
 const (
 	startPlayingAfterSamples = 3 * meowcaller.FrameSamples // 180 ms
 	startPlayingAfter        = 240 * time.Millisecond
+)
+
+// An accepted call carries audio within a second or two. One that has none after this long never
+// will (the relay is not bridging it): the person hears silence, so the call is ended.
+const (
+	audioAfterAccept = 6 * time.Second
+	noAudio          = "answered, but no audio flowed"
 )
 
 // voiceStats is what the queue saw of one call, for the call's report.
@@ -156,6 +166,7 @@ func (q *voiceQueue) Close() error { return nil }
 type liveCall struct {
 	call     *meowcaller.Call
 	voice    *voiceQueue
+	accepted atomic.Bool // the person picked up, or this side did
 	answered atomic.Bool // audio has flowed
 	ended    atomic.Bool
 	over     sync.Once
@@ -228,6 +239,7 @@ func (s *server) carry(call *meowcaller.Call) *liveCall {
 			s.emit(map[string]any{"event": "answered", "callId": call.ID()})
 		}
 	})
+	call.OnPeerAccept(func() { s.expectAudio(lc) })
 	call.OnEnd(func(reason string) {
 		fallback := "declined or unreachable"
 		if lc.answered.Load() {
@@ -245,6 +257,17 @@ func (s *server) carry(call *meowcaller.Call) *liveCall {
 		s.emit(map[string]any{"event": "mic", "pcm": base64.StdEncoding.EncodeToString(pcm)})
 	}))
 	return lc
+}
+
+// expectAudio ends lc when it carries no audio soon after it was accepted.
+func (s *server) expectAudio(lc *liveCall) {
+	lc.accepted.Store(true)
+	time.AfterFunc(audioAfterAccept, func() {
+		if !lc.answered.Load() && !lc.ended.Load() {
+			s.log.Warn().Str("call_id", lc.call.ID()).Msg("accepted, but no audio flowed: ending the call")
+			s.hangUp(lc, noAudio)
+		}
+	})
 }
 
 // place rings target and gives up when nobody has answered after `ring`.
@@ -267,7 +290,7 @@ func (s *server) place(target string, ring time.Duration) {
 	s.mu.Unlock()
 	s.emit(map[string]any{"event": "ringing", "callId": call.ID()})
 	time.AfterFunc(ring, func() {
-		if !lc.answered.Load() && !lc.ended.Load() {
+		if !lc.accepted.Load() && !lc.ended.Load() {
 			s.hangUp(lc, "no answer")
 		}
 	})
@@ -310,7 +333,9 @@ func (s *server) answer(callID string) {
 	if err := lc.call.Answer(); err != nil {
 		s.log.Warn().Err(err).Msg("answer failed")
 		s.hangUp(lc, fmt.Sprintf("could not be answered: %v", err))
+		return
 	}
+	s.expectAudio(lc)
 }
 
 // callerNumbers holds, by call id, the phone number's jid WhatsApp sent beside a caller named by
