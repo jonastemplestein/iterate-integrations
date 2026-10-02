@@ -5,7 +5,8 @@
   "description": "WhatsApp voice calls from an iterate project's own account, carried to the project's voice processor: iterate provide whatsapp-calls/calls.ts --name whatsappCalls",
   "type": "module",
   "scripts": {
-    "bridge": "go build -o jeeves-call ."
+    "bridge": "go build -o jeeves-call .",
+    "test": "vp test"
   },
   "dependencies": {
     "zod": "^4.0.0"

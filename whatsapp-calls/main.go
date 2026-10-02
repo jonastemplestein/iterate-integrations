@@ -8,8 +8,10 @@
 //	                                          an 8-character code typed into the phone
 //	jeeves-call play <number> <file> [secs]   call the number, play the file once they answer,
 //	                                          record what they say to peer.wav, hang up after secs
-//	jeeves-call bridge <number> [ringSecs]    call the number and carry the call's audio over
-//	                                          stdin and stdout (bridge.go): what calls.ts drives
+//	jeeves-call serve                         stay connected: place calls and be rung, with the
+//	                                          calls' audio over stdin and stdout (serve.go):
+//	                                          what calls.ts drives. `link` and `play` connect
+//	                                          as the same device, so never beside it
 //
 // State (the linked device's keys) is $WHATSAPP_CALLS_DIR/wa-voip.db; never commit or copy it.
 // While pairing, each QR code's text is written to $WHATSAPP_CALLS_DIR/qr.txt, and a pairing
@@ -74,17 +76,8 @@ func main() {
 			}
 		}
 		err = play(ctx, os.Args[2], os.Args[3], time.Duration(seconds)*time.Second)
-	case "bridge":
-		if len(os.Args) < 3 {
-			usage()
-		}
-		ring := 45
-		if len(os.Args) > 3 {
-			if ring, err = strconv.Atoi(os.Args[3]); err != nil {
-				usage()
-			}
-		}
-		err = bridge(ctx, os.Args[2], time.Duration(ring)*time.Second)
+	case "serve":
+		err = serve(ctx)
 	default:
 		usage()
 	}
@@ -94,7 +87,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: jeeves-call link [number] | play <number> <file.mp3|wav|opus> [seconds] | bridge <number> [ringSeconds]")
+	fmt.Fprintln(os.Stderr, "usage: jeeves-call link [number] | play <number> <file.mp3|wav|opus> [seconds] | serve")
 	os.Exit(2)
 }
 
@@ -104,7 +97,7 @@ func stateDir() string {
 		return dir
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "iterate-self-host", "jonas-os", "whatsapp-calls")
+	return filepath.Join(home, ".config", "iterate-whatsapp-calls")
 }
 
 // link pairs this computer and exits once WhatsApp has accepted it.
@@ -232,6 +225,8 @@ func connect(ctx context.Context, pairingPhone string) (*whatsmeow.Client, *meow
 		return nil, nil, fmt.Errorf("load device: %w", err)
 	}
 	wa := whatsmeow.NewClient(device, waLog.Zerolog(waLogger).Sub("wa"))
+	// before meowcaller's own handler: a caller's number is known by the time its call is announced
+	wa.AddEventHandler(rememberCaller)
 	// meowcaller's call handlers go on before the receive loop starts
 	client := meowcaller.NewClient(wa, meowcaller.WithLogger(*log))
 
