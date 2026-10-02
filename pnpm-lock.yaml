@@ -82,6 +82,22 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  whatsapp-calls:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.0
+      iterate:
+        specifier: https://pkg.pr.new/iterate/iterate/iterate@d285b9c
+        version: https://pkg.pr.new/iterate/iterate/iterate@d285b9c
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
 packages:
 
   '@babel/code-frame@7.29.7':
